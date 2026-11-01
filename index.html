@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10111a">
+  <title>给你的一封魔法委托</title>
+  <style>
+    :root {
+      --ink: #f8f4eb;
+      --muted: #b8b4aa;
+      --night: #0e1018;
+      --night-2: #171621;
+      --red: #d75a4a;
+      --red-2: #f18a61;
+      --gold: #e8c77e;
+      --green: #6f9d7a;
+      --line: rgba(248, 244, 235, .18);
+      --panel: rgba(20, 20, 30, .78);
+      --shadow: 0 18px 60px rgba(0, 0, 0, .32);
+      color-scheme: dark;
+      font-family: "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; min-height: 100%; margin: 0; background: var(--night); }
+    body { overflow: hidden; color: var(--ink); }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+    #sky {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      background: radial-gradient(circle at 50% 110%, #352229 0, #171621 44%, #0e1018 80%);
+    }
+
+    .grain {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: .13;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.24'/%3E%3C/svg%3E");
+    }
+
+    .app {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100dvh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .topbar {
+      min-height: 58px;
+      padding: max(14px, env(safe-area-inset-top)) 20px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+    .brand-mark { width: 24px; height: 28px; position: relative; transform: rotate(-5deg); }
+    .brand-mark::before,
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: 2px 4px 7px;
+      background: linear-gradient(145deg, var(--red-2), var(--red));
+      clip-path: polygon(50% 0, 61% 25%, 83% 13%, 78% 36%, 100% 42%, 77% 58%, 85% 82%, 58% 72%, 50% 100%, 41% 72%, 14% 82%, 23% 58%, 0 42%, 22% 36%, 17% 13%, 39% 25%);
+    }
+    .brand-mark::after { inset: 22px 11px 0; clip-path: polygon(42% 0, 58% 0, 62% 100%, 38% 100%); background: var(--gold); }
+
+    .tools { display: flex; gap: 8px; }
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--line);
+      background: rgba(18, 18, 27, .55);
+      border-radius: 6px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      transition: background .2s, border-color .2s, transform .2s;
+    }
+    .icon-btn:hover { background: rgba(55, 48, 55, .75); border-color: rgba(232, 199, 126, .45); transform: translateY(-1px); }
+
+    .progress-wrap { display: flex; align-items: center; gap: 10px; }
+    .progress-track { width: min(240px, 26vw); height: 3px; background: rgba(255,255,255,.1); overflow: hidden; }
+    .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--red), var(--gold)); transition: width .6s ease; }
+    .progress-label { min-width: 42px; color: var(--muted); font-size: 12px; }
+
+    main { position: relative; min-height: 0; }
+    .scene {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      align-items: center;
+      justify-items: center;
+      padding: 24px clamp(20px, 6vw, 88px);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(12px);
+      transition: opacity .55s ease, transform .55s ease, visibility .55s;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+    .scene.active { opacity: 1; visibility: visible; transform: translateY(0); }
+
+    .scene-inner { width: min(100%, 1020px); margin: auto; }
+    .narrow { width: min(100%, 760px); text-align: center; }
+    .eyebrow { color: var(--gold); font-size: 12px; letter-spacing: 0; margin: 0 0 14px; }
+    h1, h2, p { margin-top: 0; }
+    h1 { font-family: "STSong", "SimSun", serif; font-size: clamp(38px, 7vw, 82px); line-height: 1.08; letter-spacing: 0; margin-bottom: 18px; font-weight: 600; }
+    h2 { font-family: "STSong", "SimSun", serif; font-size: clamp(30px, 4vw, 48px); line-height: 1.2; letter-spacing: 0; margin-bottom: 14px; font-weight: 600; }
+    .lead { color: #d6d1c7; font-size: clamp(16px, 2vw, 20px); line-height: 1.8; margin-bottom: 30px; }
+    .quiet { color: var(--muted); font-size: 13px; line-height: 1.7; }
+
+    .primary,
+    .secondary,
+    .choice {
+      min-height: 48px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 0 22px;
+      cursor: pointer;
+      transition: transform .2s, background .2s, border-color .2s, box-shadow .2s;
+    }
+    .primary { background: var(--red); color: #fff; box-shadow: 0 10px 34px rgba(215, 90, 74, .25); font-weight: 700; }
+    .primary:hover { background: #e66c58; transform: translateY(-2px); box-shadow: 0 14px 40px rgba(215, 90, 74, .34); }
+    .secondary { background: rgba(255,255,255,.05); border-color: var(--line); }
+    .secondary:hover { background: rgba(255,255,255,.09); border-color: rgba(232, 199, 126, .45); }
+    .button-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+
+    .seal {
+      width: 92px;
+      height: 92px;
+      margin: 0 auto 28px;
+      border: 1px solid rgba(232, 199, 126, .7);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      position: relative;
+      color: var(--gold);
+      font-family: "STSong", serif;
+      font-size: 28px;
+      box-shadow: inset 0 0 0 7px rgba(232, 199, 126, .08), 0 0 42px rgba(232, 199, 126, .11);
+      animation: float 4s ease-in-out infinite;
+    }
+    .seal::before, .seal::after { content: ""; position: absolute; width: 10px; height: 10px; border: 1px solid var(--gold); transform: rotate(45deg); }
+    .seal::before { top: -6px; }
+    .seal::after { bottom: -6px; }
+    @keyframes float { 50% { transform: translateY(-7px) rotate(1deg); } }
+
+    .intro-name { color: var(--red-2); }
+
+    .quest-head { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: start; margin-bottom: 28px; }
+    .quest-no { font: 600 54px/1 "STSong", serif; color: rgba(232,199,126,.32); }
+    .question { font-size: clamp(22px, 3vw, 34px); font-family: "STSong", serif; line-height: 1.45; margin: 0; }
+    .choices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .choice {
+      min-height: 76px;
+      background: rgba(22, 22, 32, .72);
+      border-color: var(--line);
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 16px;
+    }
+    .choice:hover { transform: translateY(-2px); border-color: rgba(232, 199, 126, .5); background: rgba(38, 34, 40, .88); }
+    .choice.selected { border-color: var(--red-2); background: rgba(215, 90, 74, .15); }
+    .choice-token { width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.15); border-radius: 50%; color: var(--gold); }
+    .answer-note { min-height: 52px; margin-top: 18px; color: #ddd6c9; font-size: 15px; line-height: 1.7; }
+
+    .constellation-layout { display: grid; grid-template-columns: minmax(260px, .9fr) minmax(360px, 1.4fr); gap: clamp(30px, 6vw, 80px); align-items: center; }
+    .world-copy .lead { margin-bottom: 18px; }
+    .trait-list { display: grid; gap: 10px; margin-top: 22px; }
+    .trait { display: flex; align-items: center; gap: 12px; color: #ddd8ce; opacity: .42; transition: opacity .35s, transform .35s; }
+    .trait.lit { opacity: 1; transform: translateX(6px); }
+    .trait i { width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg); box-shadow: 0 0 16px var(--gold); }
+
+    .star-field { position: relative; aspect-ratio: 1.16; min-height: 320px; }
+    .star-node {
+      position: absolute;
+      width: 64px;
+      height: 64px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,.04);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      transition: background .3s, box-shadow .3s, color .3s, transform .3s;
+      z-index: 2;
+    }
+    .star-node::before { content: ""; width: 13px; height: 13px; background: currentColor; clip-path: polygon(50% 0,61% 36%,100% 50%,61% 63%,50% 100%,39% 63%,0 50%,39% 36%); }
+    .star-node:hover { transform: scale(1.08); color: var(--gold); }
+    .star-node.lit { color: #fff4cc; background: rgba(232,199,126,.12); box-shadow: 0 0 35px rgba(232,199,126,.42); }
+    .star-label { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); width: 112px; font-style: normal; font-size: 12px; color: inherit; }
+    .star-line { position: absolute; height: 1px; transform-origin: left center; background: linear-gradient(90deg, rgba(232,199,126,.04), rgba(232,199,126,.45)); opacity: .3; transition: opacity .4s; }
+    .star-field.ready .star-line { opacity: 1; box-shadow: 0 0 8px rgba(232,199,126,.3); }
+    .world-status { margin-top: 12px; color: var(--gold); font-size: 13px; min-height: 20px; }
+
+    .leaf-layout { display: grid; grid-template-columns: minmax(320px, 1.1fr) minmax(280px, .9fr); gap: clamp(28px, 7vw, 90px); align-items: center; }
+    .leaf-board { position: relative; aspect-ratio: 1.1; display: grid; place-items: center; }
+    #leafCanvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+    .leaf-copy { text-align: left; }
+    .leaf-meter { display: flex; align-items: center; gap: 12px; margin: 24px 0; }
+    .leaf-meter-track { flex: 1; height: 4px; background: rgba(255,255,255,.1); }
+    .leaf-meter-fill { width: 0; height: 100%; background: linear-gradient(90deg, var(--red), var(--gold)); transition: width .35s; }
+    .leaf-count { width: 50px; color: var(--gold); font-size: 13px; }
+
+    .gift-wrap { display: grid; grid-template-columns: minmax(260px, .9fr) minmax(320px, 1.1fr); gap: clamp(30px, 6vw, 80px); align-items: center; }
+    .gift-leaf {
+      width: min(300px, 70vw);
+      aspect-ratio: .88;
+      margin: auto;
+      position: relative;
+      filter: drop-shadow(0 26px 35px rgba(0,0,0,.3));
+      animation: leafBreathe 4s ease-in-out infinite;
+    }
+    .gift-leaf::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 12%;
+      background: radial-gradient(circle at 50% 55%, #f4ae6c 0, #df694d 42%, #9d3140 100%);
+      clip-path: polygon(50% 0, 59% 24%, 76% 12%, 72% 36%, 96% 32%, 82% 54%, 100% 64%, 68% 70%, 62% 96%, 50% 81%, 38% 96%, 32% 70%, 0 64%, 18% 54%, 4% 32%, 28% 36%, 24% 12%, 41% 24%);
+      box-shadow: inset 0 0 50px rgba(255,225,150,.3);
+    }
+    .gift-leaf::after { content: ""; position: absolute; width: 8%; height: 28%; left: 46%; bottom: 0; background: linear-gradient(#bd5547, #e8c77e); clip-path: polygon(35% 0, 65% 0, 100% 100%, 0 100%); }
+    @keyframes leafBreathe { 50% { transform: translateY(-8px) rotate(1.5deg); filter: drop-shadow(0 35px 42px rgba(215,90,74,.25)); } }
+    .gift-message { text-align: left; }
+    .gift-quote { padding: 18px 0 18px 20px; border-left: 2px solid var(--red); color: #ded8cd; line-height: 1.8; margin: 24px 0; }
+
+    .confession { width: min(100%, 820px); text-align: center; }
+    .confession h2 { font-size: clamp(36px, 6vw, 68px); }
+    .confession-text { width: min(100%, 650px); margin: 0 auto 28px; color: #e3ddd2; font-family: "STSong", serif; font-size: clamp(17px, 2.1vw, 22px); line-height: 2; }
+    .hand-over { color: var(--gold); font-size: 13px; margin-bottom: 24px; }
+
+    .response-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 26px; }
+    .response-options button { min-height: 66px; padding: 10px 14px; }
+    .response-result { min-height: 48px; margin-top: 22px; color: #e6dfd3; line-height: 1.7; }
+    .celebrate { animation: glow 1.4s ease-in-out infinite alternate; }
+    @keyframes glow { to { text-shadow: 0 0 30px rgba(232,199,126,.7); } }
+
+    footer { min-height: 44px; padding: 8px 20px max(12px, env(safe-area-inset-bottom)); display: flex; align-items: center; justify-content: space-between; color: rgba(255,255,255,.38); font-size: 11px; }
+    .key { border: 1px solid rgba(255,255,255,.18); border-bottom-width: 2px; border-radius: 4px; padding: 2px 6px; color: rgba(255,255,255,.55); }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: rgba(8, 8, 12, .84);
+      backdrop-filter: blur(14px);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .25s, visibility .25s;
+    }
+    .overlay.open { opacity: 1; visibility: visible; }
+    .modal { width: min(100%, 580px); background: #181820; border: 1px solid var(--line); box-shadow: var(--shadow); padding: 28px; border-radius: 8px; }
+    .modal h3 { margin: 0 0 8px; font-size: 20px; }
+    .modal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 22px 0; }
+    .jump-btn { min-height: 48px; border: 1px solid var(--line); background: rgba(255,255,255,.04); border-radius: 5px; cursor: pointer; text-align: left; padding: 10px 14px; }
+    .jump-btn:hover { border-color: var(--gold); }
+    .blackout { background: #000; cursor: none; }
+    .blackout > * { display: none; }
+
+    .toast { position: fixed; left: 50%; bottom: 72px; z-index: 30; transform: translate(-50%, 18px); background: #f5efe4; color: #1c1a1b; padding: 10px 16px; border-radius: 5px; font-size: 13px; opacity: 0; pointer-events: none; transition: .25s; box-shadow: var(--shadow); }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    .spark { position: fixed; width: 7px; height: 7px; pointer-events: none; z-index: 12; animation: spark .9s ease-out forwards; }
+    @keyframes spark { to { transform: translate(var(--dx), var(--dy)) rotate(180deg); opacity: 0; } }
+
+    @media (max-width: 760px) {
+      .topbar { padding-inline: 12px; }
+      .brand span:last-child { display: none; }
+      .progress-track { width: 88px; }
+      .scene { padding: 20px; }
+      .choices, .constellation-layout, .leaf-layout, .gift-wrap { grid-template-columns: 1fr; }
+      .choice { min-height: 60px; }
+      .constellation-layout { gap: 20px; }
+      .star-field { width: min(100%, 430px); min-height: 280px; margin: auto; }
+      .leaf-board { width: min(100%, 430px); margin: auto; }
+      .leaf-copy, .gift-message { text-align: center; }
+      .gift-leaf { width: min(210px, 52vw); }
+      .response-options { grid-template-columns: 1fr; }
+      footer span:first-child { display: none; }
+      .modal-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="sky" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="brand"><i class="brand-mark" aria-hidden="true"></i><span>枫叶特别行动</span></div>
+      <div class="progress-wrap" aria-label="任务进度">
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <span class="progress-label" id="progressLabel">00 / 06</span>
+      </div>
+      <div class="tools">
+        <button class="icon-btn" id="soundBtn" type="button" title="声音开关" aria-label="声音开关">♪</button>
+        <button class="icon-btn" id="fullBtn" type="button" title="进入全屏" aria-label="进入全屏">⛶</button>
+        <button class="icon-btn" id="controlBtn" type="button" title="现场控制台" aria-label="现场控制台">•••</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="scene active" data-scene="0">
+        <div class="narrow">
+          <div class="seal" aria-hidden="true">密</div>
+          <p class="eyebrow">一封等待了很久的魔法委托</p>
+          <h1>致 <span class="intro-name" data-her-name>你</span></h1>
+          <p class="lead">今晚，有一件只和你有关的小事。<br>需要一点默契、一点想象力，还有一片枫叶。</p>
+          <button class="primary" id="startBtn" type="button">领取委托</button>
+          <p class="quiet" style="margin-top: 18px">建议打开声音 · 全程约 4 分钟</p>
+        </div>
+      </section>
+
+      <section class="scene" data-scene="1">
+        <div class="scene-inner">
+          <p class="eyebrow">任务一 · 默契校验</p>
+          <div class="quest-head">
+            <span class="quest-no" id="quizNo">01</span>
+            <p class="question" id="questionText"></p>
+          </div>
+          <div class="choices" id="choices"></div>
+          <div class="answer-note" id="answerNote" aria-live="polite"></div>
+          <div class="button-row">
+            <button class="primary" id="quizNext" type="button" disabled>下一题</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene" data-scene="2">
+        <div class="scene-inner constellation-layout">
+          <div class="world-copy">
+            <p class="eyebrow">任务二 · 点亮她的世界</p>
+            <h2>有些喜欢，<br>本来就不止一种样子</h2>
+            <p class="lead">依次点亮五颗星。每一颗，都是你身上让我觉得可爱的部分。</p>
+            <div class="trait-list" id="traitList">
+              <div class="trait"><i></i><span>会为故事里真挚的感情心动</span></div>
+              <div class="trait"><i></i><span>有自己的柔软，也有自己的坚持</span></div>
+              <div class="trait"><i></i><span>走过很远的地方，仍然保留好奇心</span></div>
+              <div class="trait"><i></i><span>认真工作，也认真期待生活</span></div>
+              <div class="trait"><i></i><span>能把一顿有肉的饭吃得特别幸福</span></div>
+            </div>
+            <div class="world-status" id="worldStatus">0 / 5 颗星已点亮</div>
+          </div>
+          <div>
+            <div class="star-field" id="starField" aria-label="点击星星点亮星图">
+              <span class="star-line" style="left:18%;top:26%;width:37%;transform:rotate(25deg)"></span>
+              <span class="star-line" style="left:48%;top:48%;width:38%;transform:rotate(-31deg)"></span>
+              <span class="star-line" style="left:23%;top:74%;width:35%;transform:rotate(-46deg)"></span>
+              <span class="star-line" style="left:55%;top:30%;width:28%;transform:rotate(67deg)"></span>
+              <button class="star-node" style="left:8%;top:16%" data-star="0" aria-label="点亮故事星"><i class="star-label">故事</i></button>
+              <button class="star-node" style="left:44%;top:36%" data-star="1" aria-label="点亮温柔星"><i class="star-label">温柔</i></button>
+              <button class="star-node" style="left:74%;top:12%" data-star="2" aria-label="点亮远方星"><i class="star-label">远方</i></button>
+              <button class="star-node" style="left:17%;top:65%" data-star="3" aria-label="点亮认真星"><i class="star-label">认真</i></button>
+              <button class="star-node" style="left:68%;top:67%" data-star="4" aria-label="点亮好胃口星"><i class="star-label">好胃口</i></button>
+            </div>
+            <div class="button-row"><button class="primary" id="worldNext" type="button" disabled>星图完成</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene" data-scene="3">
+        <div class="scene-inner leaf-layout">
+          <div class="leaf-board"><canvas id="leafCanvas" aria-label="收集发光碎片，拼成枫叶"></canvas></div>
+          <div class="leaf-copy">
+            <p class="eyebrow">任务三 · 制作一份礼物</p>
+            <h2>把散落的光，<br>收进一片枫叶里</h2>
+            <p class="lead">点击画面中的发光碎片。它不需要多昂贵，真正特别的是：我记得你看过的故事，也记得你当时的心动。</p>
+            <div class="leaf-meter">
+              <div class="leaf-meter-track"><div class="leaf-meter-fill" id="leafMeter"></div></div>
+              <span class="leaf-count" id="leafCount">0 / 8</span>
+            </div>
+            <button class="primary" id="leafNext" type="button" disabled>打开礼物</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene" data-scene="4">
+        <div class="scene-inner gift-wrap">
+          <div class="gift-leaf" aria-hidden="true"></div>
+          <div class="gift-message">
+            <p class="eyebrow">任务奖励 · 一片只属于你的枫叶</p>
+            <h2>喜欢不是复制剧情，<br>是想和你写新的那一段</h2>
+            <p class="gift-quote">“听说接住枫叶的人，会和喜欢的人相遇。<br>所以这一片，我想亲手交给你。”</p>
+            <p class="quiet">这里适合由你拿出准备好的实体礼物。</p>
+            <button class="primary" id="giftNext" type="button">我已经准备好了</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene" data-scene="5">
+        <div class="confession">
+          <p class="eyebrow">最终任务 · 这一段请由我亲口说</p>
+          <h2><span data-her-name>你</span>，我喜欢你</h2>
+          <p class="confession-text" id="confessionText"></p>
+          <p class="hand-over">现在，请把屏幕放到一边，看着她说完你真正想说的话。</p>
+          <button class="primary" id="askBtn" type="button">我说完了</button>
+        </div>
+      </section>
+
+      <section class="scene" data-scene="6">
+        <div class="confession">
+          <p class="eyebrow">委托的最后一页</p>
+          <h2>你愿意让我们<br>从今天开始吗？</h2>
+          <p class="lead">不着急，也没有标准答案。你的真实感受最重要。</p>
+          <div class="response-options">
+            <button class="primary" type="button" data-response="yes">我愿意</button>
+            <button class="secondary" type="button" data-response="hug">先抱抱你</button>
+            <button class="secondary" type="button" data-response="think">让我认真想一想</button>
+          </div>
+          <div class="response-result" id="responseResult" aria-live="polite"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span><span class="key">M</span> 静音　<span class="key">F</span> 全屏　<span class="key">B</span> 黑屏　<span class="key">O</span> 控制台</span>
+      <span id="footerHint">点击“领取委托”开始</span>
+    </footer>
+  </div>
+
+  <div class="overlay" id="controlOverlay" role="dialog" aria-modal="true" aria-labelledby="controlTitle">
+    <div class="modal">
+      <h3 id="controlTitle">现场控制台</h3>
+      <p class="quiet">给你临场使用。跳转不会丢失已完成的互动状态。</p>
+      <div class="modal-grid">
+        <button class="jump-btn" type="button" data-jump="0">00　重新开场</button>
+        <button class="jump-btn" type="button" data-jump="1">01　默契校验</button>
+        <button class="jump-btn" type="button" data-jump="2">02　点亮星图</button>
+        <button class="jump-btn" type="button" data-jump="3">03　枫叶任务</button>
+        <button class="jump-btn" type="button" data-jump="4">04　拿出礼物</button>
+        <button class="jump-btn" type="button" data-jump="5">05　正式告白</button>
+      </div>
+      <div class="button-row">
+        <button class="secondary" id="blackBtn" type="button">应急黑屏</button>
+        <button class="primary" id="closeControl" type="button">返回现场</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    // 后续只需要改这里，就能替换称呼和核心告白文案。
+    const CONFIG = {
+      herName: "她的名字",
+      yourName: "你的名字",
+      confession: [
+        "我喜欢你的可爱、认真和柔软，也喜欢你聊到喜欢的故事时，眼睛里那种藏不住的兴奋。",
+        "我不能保证生活会像小说一样每一章都恰到好处，但我想认真地了解你、陪着你，把普通的日子一起过成值得收藏的情节。",
+        "所以今天，我想问的不是一个游戏问题，而是：你愿意和我在一起吗？"
+      ]
+    };
+
+    const quiz = [
+      {
+        question: "如果今晚只能解锁一种隐藏奖励，你会选？",
+        answers: ["一桌认真准备的肉", "一部让人磕到上头的故事", "一张去远方的机票", "一份神秘的魔法礼物"],
+        note: "收到。真正的隐藏奖励是：以后这些选项，我都想慢慢陪你实现。"
+      },
+      {
+        question: "一段让人心动的关系，最重要的魔法是什么？",
+        answers: ["永远有话可说", "看见并尊重彼此", "一起探索新世界", "关键时刻站在对方身边"],
+        note: "没有唯一答案。因为好的感情，本来就可以同时拥有很多种样子。"
+      },
+      {
+        question: "如果把人生写成一本小说，你希望下一章叫什么？",
+        answers: ["好好吃饭", "去看更大的世界", "被坚定地选择", "故事从今天开始"],
+        note: "答案已记录。接下来的剧情，需要两位主角一起决定。"
+      }
+    ];
+
+    const state = { scene: 0, quizIndex: 0, selected: false, litStars: new Set(), leafFound: new Set(), sound: true, started: false };
+    const scenes = [...document.querySelectorAll(".scene")];
+    const progressFill = document.getElementById("progressFill");
+    const progressLabel = document.getElementById("progressLabel");
+    const footerHint = document.getElementById("footerHint");
+    const toast = document.getElementById("toast");
+    let audioCtx = null;
+    let musicTimer = null;
+
+    document.querySelectorAll("[data-her-name]").forEach(el => el.textContent = CONFIG.herName);
+    document.getElementById("confessionText").innerHTML = CONFIG.confession.join("<br><br>");
+
+    function goTo(index) {
+      state.scene = Math.max(0, Math.min(6, index));
+      scenes.forEach((scene, i) => scene.classList.toggle("active", i === state.scene));
+      progressFill.style.width = `${state.scene / 6 * 100}%`;
+      progressLabel.textContent = `${String(state.scene).padStart(2, "0")} / 06`;
+      const hints = ["点击“领取委托”开始", "选择你最喜欢的答案", "点亮全部五颗星", "找到八枚发光碎片", "现在可以拿出实体礼物", "这段请看着她亲口说", "把选择权认真交给她"];
+      footerHint.textContent = hints[state.scene];
+      document.getElementById("controlOverlay").classList.remove("open");
+      if (state.scene === 3) setTimeout(resizeLeafCanvas, 80);
+    }
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function burst(x, y, count = 14, colors = ["#e8c77e", "#d75a4a", "#f8f4eb"]) {
+      for (let i = 0; i < count; i++) {
+        const el = document.createElement("i");
+        el.className = "spark";
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        el.style.background = colors[i % colors.length];
+        const angle = Math.PI * 2 * i / count;
+        const distance = 40 + Math.random() * 80;
+        el.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+        el.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+      }
+    }
+
+    function tone(freq, duration = .18, volume = .035, delay = 0) {
+      if (!audioCtx || !state.sound) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, audioCtx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + delay + .02);
+      gain.gain.exponentialRampToValueAtTime(.0001, audioCtx.currentTime + delay + duration);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(audioCtx.currentTime + delay);
+      osc.stop(audioCtx.currentTime + delay + duration + .02);
+    }
+
+    function startMusic() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      clearInterval(musicTimer);
+      const notes = [261.63, 329.63, 392, 493.88, 392, 329.63, 293.66, 369.99, 440, 369.99];
+      let step = 0;
+      musicTimer = setInterval(() => {
+        if (state.sound && !document.body.classList.contains("blackout")) {
+          tone(notes[step % notes.length], .7, .012);
+          if (step % 2 === 0) tone(notes[step % notes.length] / 2, 1.1, .008, .06);
+          step++;
+        }
+      }, 900);
+    }
+
+    document.getElementById("startBtn").addEventListener("click", e => {
+      state.started = true;
+      startMusic();
+      tone(523.25, .35, .04); tone(659.25, .45, .03, .16); tone(783.99, .55, .025, .32);
+      burst(e.clientX, e.clientY, 18);
+      renderQuestion();
+      setTimeout(() => goTo(1), 420);
+    });
+
+    function renderQuestion() {
+      const item = quiz[state.quizIndex];
+      state.selected = false;
+      document.getElementById("quizNo").textContent = String(state.quizIndex + 1).padStart(2, "0");
+      document.getElementById("questionText").textContent = item.question;
+      document.getElementById("answerNote").textContent = "";
+      const next = document.getElementById("quizNext");
+      next.disabled = true;
+      next.textContent = state.quizIndex === quiz.length - 1 ? "校验完成" : "下一题";
+      const choices = document.getElementById("choices");
+      choices.innerHTML = "";
+      item.answers.forEach((answer, index) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice";
+        btn.innerHTML = `<span class="choice-token">${String.fromCharCode(65 + index)}</span><span>${answer}</span>`;
+        btn.addEventListener("click", () => {
+          choices.querySelectorAll(".choice").forEach(x => x.classList.remove("selected"));
+          btn.classList.add("selected");
+          state.selected = true;
+          next.disabled = false;
+          document.getElementById("answerNote").textContent = item.note;
+          tone(440 + index * 55, .25, .03);
+        });
+        choices.appendChild(btn);
+      });
+    }
+
+    document.getElementById("quizNext").addEventListener("click", () => {
+      if (!state.selected) return;
+      if (state.quizIndex < quiz.length - 1) {
+        state.quizIndex++;
+        renderQuestion();
+      } else goTo(2);
+    });
+
+    document.querySelectorAll(".star-node").forEach(node => {
+      node.addEventListener("click", e => {
+        const index = Number(node.dataset.star);
+        if (state.litStars.has(index)) return;
+        state.litStars.add(index);
+        node.classList.add("lit");
+        document.querySelectorAll(".trait")[index].classList.add("lit");
+        document.getElementById("worldStatus").textContent = `${state.litStars.size} / 5 颗星已点亮`;
+        tone([523.25, 587.33, 659.25, 783.99, 880][index], .45, .03);
+        const rect = node.getBoundingClientRect();
+        burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 10, ["#e8c77e", "#fff4cc"]);
+        if (state.litStars.size === 5) {
+          document.getElementById("starField").classList.add("ready");
+          document.getElementById("worldStatus").textContent = "星图完成：原来我喜欢的，是完整而真实的你。";
+          document.getElementById("worldNext").disabled = false;
+        }
+      });
+    });
+    document.getElementById("worldNext").addEventListener("click", () => goTo(3));
+
+    const leafCanvas = document.getElementById("leafCanvas");
+    const leafCtx = leafCanvas.getContext("2d");
+    const fragments = [
+      [.14,.24], [.43,.15], [.76,.22], [.25,.48], [.58,.42], [.84,.57], [.38,.73], [.68,.79]
+    ];
+
+    function resizeLeafCanvas() {
+      const rect = leafCanvas.getBoundingClientRect();
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      leafCanvas.width = Math.max(1, rect.width * ratio);
+      leafCanvas.height = Math.max(1, rect.height * ratio);
+      leafCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      drawLeafGame(performance.now());
+    }
+
+    function leafPath(ctx, cx, cy, scale) {
+      const pts = [[0,-1],[.13,-.53],[.42,-.75],[.34,-.35],[.77,-.41],[.57,-.06],[.96,.08],[.48,.22],[.34,.72],[0,.48],[-.34,.72],[-.48,.22],[-.96,.08],[-.57,-.06],[-.77,-.41],[-.34,-.35],[-.42,-.75],[-.13,-.53]];
+      ctx.beginPath();
+      pts.forEach(([x,y], i) => i ? ctx.lineTo(cx + x * scale, cy + y * scale) : ctx.moveTo(cx + x * scale, cy + y * scale));
+      ctx.closePath();
+    }
+
+    function drawLeafGame(time) {
+      const w = leafCanvas.clientWidth;
+      const h = leafCanvas.clientHeight;
+      leafCtx.clearRect(0, 0, w, h);
+      leafCtx.save();
+      leafCtx.globalAlpha = .12 + state.leafFound.size * .075;
+      leafPath(leafCtx, w * .5, h * .5, Math.min(w, h) * .33);
+      const gradient = leafCtx.createRadialGradient(w*.5,h*.48,10,w*.5,h*.5,Math.min(w,h)*.35);
+      gradient.addColorStop(0, "#f3a66b"); gradient.addColorStop(1, "#9d3140");
+      leafCtx.fillStyle = gradient; leafCtx.fill();
+      leafCtx.strokeStyle = "rgba(232,199,126,.6)"; leafCtx.lineWidth = 1; leafCtx.stroke();
+      leafCtx.restore();
+
+      fragments.forEach(([px, py], index) => {
+        if (state.leafFound.has(index)) return;
+        const x = px * w; const y = py * h;
+        const pulse = 1 + Math.sin(time / 500 + index) * .18;
+        leafCtx.save();
+        leafCtx.shadowColor = "#e8c77e"; leafCtx.shadowBlur = 18 * pulse;
+        leafCtx.translate(x, y); leafCtx.rotate(time / 1800 + index);
+        leafCtx.fillStyle = "#f8e4aa";
+        leafCtx.beginPath();
+        for (let p = 0; p < 8; p++) {
+          const a = p * Math.PI / 4;
+          const r = p % 2 ? 4 : 10 * pulse;
+          leafCtx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        leafCtx.closePath(); leafCtx.fill(); leafCtx.restore();
+      });
+      if (state.scene === 3) requestAnimationFrame(drawLeafGame);
+    }
+
+    leafCanvas.addEventListener("pointerdown", e => {
+      const rect = leafCanvas.getBoundingClientRect();
+      const x = e.clientX - rect.left; const y = e.clientY - rect.top;
+      fragments.forEach(([px, py], index) => {
+        if (state.leafFound.has(index)) return;
+        if (Math.hypot(x - px * rect.width, y - py * rect.height) < 30) {
+          state.leafFound.add(index);
+          tone(523.25 + state.leafFound.size * 45, .3, .035);
+          burst(e.clientX, e.clientY, 12);
+          const count = state.leafFound.size;
+          document.getElementById("leafCount").textContent = `${count} / 8`;
+          document.getElementById("leafMeter").style.width = `${count / 8 * 100}%`;
+          if (count === 8) {
+            document.getElementById("leafNext").disabled = false;
+            showToast("枫叶制作完成");
+          }
+        }
+      });
+    });
+
+    document.getElementById("leafNext").addEventListener("click", () => goTo(4));
+    document.getElementById("giftNext").addEventListener("click", () => goTo(5));
+    document.getElementById("askBtn").addEventListener("click", () => goTo(6));
+
+    document.querySelectorAll("[data-response]").forEach(btn => {
+      btn.addEventListener("click", e => {
+        const result = document.getElementById("responseResult");
+        const value = btn.dataset.response;
+        if (value === "yes") {
+          result.innerHTML = `<strong class="celebrate">委托完成。</strong><br>${CONFIG.yourName}，接下来请好好珍惜她。`;
+          burst(innerWidth / 2, innerHeight / 2, 40);
+          [523.25, 659.25, 783.99, 1046.5].forEach((n, i) => tone(n, .7, .035, i * .13));
+        } else if (value === "hug") {
+          result.textContent = "屏幕先到这里。现在，认真抱抱她。";
+          tone(523.25, .5, .025); tone(659.25, .6, .02, .18);
+        } else {
+          result.textContent = "谢谢你认真对待这份心意。慢慢想，我尊重你的节奏和答案。";
+          tone(392, .5, .02);
+        }
+      });
+    });
+
+    function toggleSound() {
+      state.sound = !state.sound;
+      document.getElementById("soundBtn").textContent = state.sound ? "♪" : "×";
+      document.getElementById("soundBtn").setAttribute("aria-label", state.sound ? "关闭声音" : "打开声音");
+      if (state.sound && state.started) {
+        if (!audioCtx) startMusic();
+        else audioCtx.resume();
+        tone(523.25, .25, .03);
+      }
+      showToast(state.sound ? "声音已打开" : "声音已关闭");
+    }
+
+    document.getElementById("soundBtn").addEventListener("click", toggleSound);
+    document.getElementById("fullBtn").addEventListener("click", () => {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+      else document.exitFullscreen?.();
+    });
+    document.getElementById("controlBtn").addEventListener("click", () => document.getElementById("controlOverlay").classList.add("open"));
+    document.getElementById("closeControl").addEventListener("click", () => document.getElementById("controlOverlay").classList.remove("open"));
+    document.querySelectorAll("[data-jump]").forEach(btn => btn.addEventListener("click", () => goTo(Number(btn.dataset.jump))));
+
+    function toggleBlackout() {
+      document.body.classList.toggle("blackout");
+      if (document.body.classList.contains("blackout")) document.getElementById("controlOverlay").classList.remove("open");
+    }
+    document.getElementById("blackBtn").addEventListener("click", toggleBlackout);
+
+    document.addEventListener("keydown", e => {
+      if (e.key.toLowerCase() === "m") toggleSound();
+      if (e.key.toLowerCase() === "f") document.getElementById("fullBtn").click();
+      if (e.key.toLowerCase() === "b") toggleBlackout();
+      if (e.key.toLowerCase() === "o") document.getElementById("controlOverlay").classList.toggle("open");
+      if (e.key === "Escape") document.getElementById("controlOverlay").classList.remove("open");
+    });
+    document.addEventListener("dblclick", () => {
+      if (document.body.classList.contains("blackout")) toggleBlackout();
+    });
+
+    const sky = document.getElementById("sky");
+    const skyCtx = sky.getContext("2d");
+    let stars = [];
+    let motes = [];
+
+    function resizeSky() {
+      const ratio = Math.min(devicePixelRatio || 1, 2);
+      sky.width = innerWidth * ratio; sky.height = innerHeight * ratio;
+      sky.style.width = innerWidth + "px"; sky.style.height = innerHeight + "px";
+      skyCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      stars = Array.from({length: Math.min(160, Math.floor(innerWidth * innerHeight / 9000))}, () => ({
+        x: Math.random() * innerWidth, y: Math.random() * innerHeight, r: Math.random() * 1.4 + .2, a: Math.random(), s: Math.random() * .008 + .002
+      }));
+      motes = Array.from({length: 18}, () => ({
+        x: Math.random() * innerWidth, y: Math.random() * innerHeight, r: Math.random() * 2 + .5, vx: (Math.random()-.5)*.12, vy: -Math.random()*.15-.03
+      }));
+      if (state.scene === 3) resizeLeafCanvas();
+    }
+
+    function drawSky() {
+      skyCtx.clearRect(0,0,innerWidth,innerHeight);
+      stars.forEach(s => {
+        s.a += s.s; const alpha = .2 + Math.abs(Math.sin(s.a)) * .55;
+        skyCtx.fillStyle = `rgba(248,244,235,${alpha})`;
+        skyCtx.beginPath(); skyCtx.arc(s.x,s.y,s.r,0,Math.PI*2); skyCtx.fill();
+      });
+      motes.forEach(m => {
+        m.x += m.vx; m.y += m.vy;
+        if (m.y < -5) { m.y = innerHeight + 5; m.x = Math.random() * innerWidth; }
+        skyCtx.fillStyle = "rgba(232,199,126,.2)";
+        skyCtx.beginPath(); skyCtx.arc(m.x,m.y,m.r,0,Math.PI*2); skyCtx.fill();
+      });
+      requestAnimationFrame(drawSky);
+    }
+
+    window.addEventListener("resize", resizeSky);
+    resizeSky(); drawSky(); goTo(0);
+  </script>
+</body>
+</html>
