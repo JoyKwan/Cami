@@ -1,0 +1,1823 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10111a">
+  <link rel="preload" as="image" href="assets/coin-obverse.jpg">
+  <link rel="preload" as="image" href="assets/coin-reverse.jpg">
+  <title>给你的一封魔法委托</title>
+  <style>
+    :root {
+      --ink: #f8f4eb;
+      --muted: #b8b4aa;
+      --night: #0e1018;
+      --night-2: #171621;
+      --red: #d75a4a;
+      --red-2: #f18a61;
+      --gold: #e8c77e;
+      --green: #6f9d7a;
+      --line: rgba(248, 244, 235, .18);
+      --panel: rgba(20, 20, 30, .78);
+      --shadow: 0 18px 60px rgba(0, 0, 0, .32);
+      color-scheme: dark;
+      font-family: "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; min-height: 100%; margin: 0; background: var(--night); }
+    body { overflow: hidden; color: var(--ink); }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+    #sky {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      background: radial-gradient(circle at 50% 110%, #352229 0, #171621 44%, #0e1018 80%);
+    }
+
+    .grain {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: .13;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.24'/%3E%3C/svg%3E");
+    }
+
+    .app {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100dvh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .topbar {
+      min-height: 58px;
+      padding: max(14px, env(safe-area-inset-top)) 20px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+    .brand-mark { width: 24px; height: 28px; position: relative; transform: rotate(-5deg); }
+    .brand-mark::before,
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: 2px 4px 7px;
+      background: linear-gradient(145deg, var(--red-2), var(--red));
+      clip-path: polygon(50% 0, 61% 25%, 83% 13%, 78% 36%, 100% 42%, 77% 58%, 85% 82%, 58% 72%, 50% 100%, 41% 72%, 14% 82%, 23% 58%, 0 42%, 22% 36%, 17% 13%, 39% 25%);
+    }
+    .brand-mark::after { inset: 22px 11px 0; clip-path: polygon(42% 0, 58% 0, 62% 100%, 38% 100%); background: var(--gold); }
+
+    .tools { display: flex; gap: 8px; }
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--line);
+      background: rgba(18, 18, 27, .55);
+      border-radius: 6px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      transition: background .2s, border-color .2s, transform .2s;
+    }
+    .icon-btn:hover { background: rgba(55, 48, 55, .75); border-color: rgba(232, 199, 126, .45); transform: translateY(-1px); }
+
+    .progress-wrap { display: flex; align-items: center; gap: 10px; }
+    .progress-track { width: min(240px, 26vw); height: 3px; background: rgba(255,255,255,.1); overflow: hidden; }
+    .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--red), var(--gold)); transition: width .6s ease; }
+    .progress-label { min-width: 42px; color: var(--muted); font-size: 12px; }
+
+    main { position: relative; min-height: 0; }
+    .scene {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      align-items: center;
+      justify-items: center;
+      padding: 24px clamp(20px, 6vw, 88px);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(12px);
+      transition: opacity .55s ease, transform .55s ease, visibility .55s;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+    .scene.active { opacity: 1; visibility: visible; transform: translateY(0); }
+
+    .scene-inner { width: min(100%, 1020px); margin: auto; }
+    .narrow { width: min(100%, 760px); text-align: center; }
+    .eyebrow { color: var(--gold); font-size: 12px; letter-spacing: 0; margin: 0 0 14px; }
+    h1, h2, p { margin-top: 0; }
+    h1 { font-family: "STSong", "SimSun", serif; font-size: clamp(38px, 7vw, 82px); line-height: 1.08; letter-spacing: 0; margin-bottom: 18px; font-weight: 600; }
+    h2 { font-family: "STSong", "SimSun", serif; font-size: clamp(30px, 4vw, 48px); line-height: 1.2; letter-spacing: 0; margin-bottom: 14px; font-weight: 600; }
+    .lead { color: #d6d1c7; font-size: clamp(16px, 2vw, 20px); line-height: 1.8; margin-bottom: 30px; }
+    .quiet { color: var(--muted); font-size: 13px; line-height: 1.7; }
+
+    .primary,
+    .secondary,
+    .choice {
+      min-height: 48px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 0 22px;
+      cursor: pointer;
+      transition: transform .2s, background .2s, border-color .2s, box-shadow .2s;
+    }
+    .primary { background: var(--red); color: #fff; box-shadow: 0 10px 34px rgba(215, 90, 74, .25); font-weight: 700; }
+    .primary:hover { background: #e66c58; transform: translateY(-2px); box-shadow: 0 14px 40px rgba(215, 90, 74, .34); }
+    .primary:disabled { opacity: .42; cursor: default; transform: none; box-shadow: none; }
+    .secondary { background: rgba(255,255,255,.05); border-color: var(--line); }
+    .secondary:hover { background: rgba(255,255,255,.09); border-color: rgba(232, 199, 126, .45); }
+    .button-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+
+    .seal {
+      width: 92px;
+      height: 92px;
+      margin: 0 auto 28px;
+      border: 1px solid rgba(232, 199, 126, .7);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      position: relative;
+      color: var(--gold);
+      font-family: "STSong", serif;
+      font-size: 28px;
+      box-shadow: inset 0 0 0 7px rgba(232, 199, 126, .08), 0 0 42px rgba(232, 199, 126, .11);
+      animation: float 4s ease-in-out infinite;
+    }
+    .seal::before, .seal::after { content: ""; position: absolute; width: 10px; height: 10px; border: 1px solid var(--gold); transform: rotate(45deg); }
+    .seal::before { top: -6px; }
+    .seal::after { bottom: -6px; }
+    @keyframes float { 50% { transform: translateY(-7px) rotate(1deg); } }
+
+    .intro-name { color: var(--red-2); }
+
+    .quest-head { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: start; margin-bottom: 28px; }
+    .quest-no { font: 600 54px/1 "STSong", serif; color: rgba(232,199,126,.32); }
+    .question { font-size: clamp(22px, 3vw, 34px); font-family: "STSong", serif; line-height: 1.45; margin: 0; }
+    .choices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .choice {
+      min-height: 76px;
+      background: rgba(22, 22, 32, .72);
+      border-color: var(--line);
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 16px;
+    }
+    .choice:hover { transform: translateY(-2px); border-color: rgba(232, 199, 126, .5); background: rgba(38, 34, 40, .88); }
+    .choice.selected { border-color: var(--red-2); background: rgba(215, 90, 74, .15); }
+    .choice-token { width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.15); border-radius: 50%; color: var(--gold); }
+    .answer-note { min-height: 52px; margin-top: 18px; color: #ddd6c9; font-size: 15px; line-height: 1.7; }
+
+    .constellation-layout { display: grid; grid-template-columns: minmax(260px, .9fr) minmax(360px, 1.4fr); gap: clamp(30px, 6vw, 80px); align-items: center; }
+    .world-copy .lead { margin-bottom: 18px; }
+    .trait-list { display: grid; gap: 10px; margin-top: 22px; }
+    .trait { display: flex; align-items: center; gap: 12px; color: #ddd8ce; opacity: .42; transition: opacity .35s, transform .35s; }
+    .trait.lit { opacity: 1; transform: translateX(6px); }
+    .trait i { width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg); box-shadow: 0 0 16px var(--gold); }
+
+    .star-field { position: relative; aspect-ratio: 1.16; min-height: 320px; }
+    .star-node {
+      position: absolute;
+      width: 64px;
+      height: 64px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,.04);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      transition: background .3s, box-shadow .3s, color .3s, transform .3s;
+      z-index: 2;
+    }
+    .star-node::before { content: ""; width: 13px; height: 13px; background: currentColor; clip-path: polygon(50% 0,61% 36%,100% 50%,61% 63%,50% 100%,39% 63%,0 50%,39% 36%); }
+    .star-node:hover { transform: scale(1.08); color: var(--gold); }
+    .star-node.lit { color: #fff4cc; background: rgba(232,199,126,.12); box-shadow: 0 0 35px rgba(232,199,126,.42); }
+    .star-label { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); width: 112px; font-style: normal; font-size: 12px; color: inherit; }
+    .star-line { position: absolute; height: 1px; transform-origin: left center; background: linear-gradient(90deg, rgba(232,199,126,.04), rgba(232,199,126,.45)); opacity: .3; transition: opacity .4s; }
+    .star-field.ready .star-line { opacity: 1; box-shadow: 0 0 8px rgba(232,199,126,.3); }
+    .world-status { margin-top: 12px; color: var(--gold); font-size: 13px; min-height: 20px; }
+
+    .leaf-layout { display: grid; grid-template-columns: minmax(320px, 1.1fr) minmax(280px, .9fr); gap: clamp(28px, 7vw, 90px); align-items: center; }
+    .leaf-board { position: relative; aspect-ratio: 1.1; display: grid; place-items: center; }
+    #leafCanvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+    .leaf-copy { text-align: left; }
+    .leaf-meter { display: flex; align-items: center; gap: 12px; margin: 24px 0; }
+    .leaf-meter-track { flex: 1; height: 4px; background: rgba(255,255,255,.1); }
+    .leaf-meter-fill { width: 0; height: 100%; background: linear-gradient(90deg, var(--red), var(--gold)); transition: width .35s; }
+    .leaf-count { width: 50px; color: var(--gold); font-size: 13px; }
+
+    .gift-wrap { display: grid; grid-template-columns: minmax(300px, .92fr) minmax(330px, 1.08fr); gap: clamp(26px, 5vw, 64px); align-items: center; }
+    .gift-message { text-align: left; }
+    .gift-quote { padding: 18px 0 18px 20px; border-left: 2px solid var(--red); color: #ded8cd; line-height: 1.8; margin: 24px 0; }
+    .gift-body { color: #d9d3c8; font-size: 14px; line-height: 1.9; margin-bottom: 22px; }
+    .gift-body strong { color: var(--gold); font-weight: 600; letter-spacing: .03em; }
+    .gift-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .gift-actions .primary, .gift-actions .secondary { min-height: 46px; }
+    .gift-note { margin: 16px 0 0; }
+
+    /* ---- 定制银币 ---- */
+    .coin-stage { position: relative; display: grid; justify-items: center; gap: 14px; padding: 12px 0 4px; }
+    .coin-stage::after {
+      content: "";
+      position: absolute;
+      bottom: 112px;
+      width: min(240px, 58%);
+      height: 18px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(0,0,0,.52), transparent 70%);
+      filter: blur(5px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .coin-stage::before {
+      content: "";
+      position: absolute;
+      top: 6%;
+      width: min(360px, 82%);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(210,225,242,.18), rgba(210,225,242,.04) 46%, transparent 68%);
+      filter: blur(10px);
+      pointer-events: none;
+    }
+    .coin {
+      --coin-size: min(320px, 64vw);
+      width: var(--coin-size);
+      height: var(--coin-size);
+      position: relative;
+      z-index: 1;
+      transform-style: preserve-3d;
+      transition: transform 1.1s cubic-bezier(.2, .75, .2, 1);
+      cursor: pointer;
+    }
+    .coin.flipped { transform: rotateY(180deg); }
+    .coin:focus-visible { outline: 2px solid var(--gold); outline-offset: 8px; border-radius: 50%; }
+    .coin-face {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      overflow: hidden;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      background: #0b0d13;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.22), inset 0 0 28px rgba(0,0,0,.38);
+    }
+    .coin-face img { position: absolute; width: 114%; height: 114%; left: -7%; top: -7%; object-fit: cover; }
+    .coin-face::before {
+      content: "";
+      position: absolute;
+      inset: -20%;
+      z-index: 2;
+      background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.2) 50%, transparent 62%);
+      transform: translateX(-75%);
+      animation: coinShine 5.6s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .coin-back { transform: rotateY(180deg); }
+    @keyframes coinShine { 0%, 58% { transform: translateX(-75%); } 82%, 100% { transform: translateX(75%); } }
+    .coin-caption { margin: 0; color: var(--muted); font-size: 11px; letter-spacing: .16em; min-height: 18px; text-align: center; }
+    .coin-caption b { color: var(--gold); font-weight: 600; }
+    .coin-meta { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; }
+    .coin-chip { border: 1px solid rgba(205,216,230,.22); background: rgba(205,216,230,.05); color: #cbd4df; font-size: 10px; letter-spacing: .12em; padding: 4px 9px; border-radius: 999px; }
+    .coin-tools { display: flex; gap: 9px; flex-wrap: wrap; justify-content: center; }
+    .coin-tools .secondary { min-height: 40px; padding: 0 14px; font-size: 13px; }
+
+    .response-result .primary { margin-top: 14px; }
+
+
+    .confession { width: min(100%, 820px); text-align: center; }
+    .confession h2 { font-size: clamp(36px, 6vw, 68px); }
+    .confession-text { width: min(100%, 650px); margin: 0 auto 28px; color: #e3ddd2; font-family: "STSong", serif; font-size: clamp(17px, 2.1vw, 22px); line-height: 2; }
+    .hand-over { color: var(--gold); font-size: 13px; margin-bottom: 24px; }
+
+    .response-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 26px; }
+    .response-options button { min-height: 66px; padding: 10px 14px; }
+    .response-options button:disabled { opacity: .5; cursor: default; transform: none; }
+    .response-result { min-height: 48px; margin-top: 22px; color: #e6dfd3; line-height: 1.7; }
+    .celebrate { animation: glow 1.4s ease-in-out infinite alternate; }
+    @keyframes glow { to { text-shadow: 0 0 30px rgba(232,199,126,.7); } }
+
+    footer { min-height: 44px; padding: 8px 20px max(12px, env(safe-area-inset-bottom)); display: flex; align-items: center; justify-content: space-between; color: rgba(255,255,255,.38); font-size: 11px; }
+    .key { border: 1px solid rgba(255,255,255,.18); border-bottom-width: 2px; border-radius: 4px; padding: 2px 6px; color: rgba(255,255,255,.55); }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: rgba(8, 8, 12, .84);
+      backdrop-filter: blur(14px);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      overflow-y: auto;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .25s, visibility .25s;
+    }
+    .overlay.open { opacity: 1; visibility: visible; }
+    .modal { width: min(100%, 580px); max-height: calc(100dvh - 40px); overflow-y: auto; background: #181820; border: 1px solid var(--line); box-shadow: var(--shadow); padding: 28px; border-radius: 8px; }
+    .modal h3 { margin: 0 0 8px; font-size: 20px; }
+    .modal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 22px 0; }
+    .jump-btn { min-height: 48px; border: 1px solid var(--line); background: rgba(255,255,255,.04); border-radius: 5px; cursor: pointer; text-align: left; padding: 10px 14px; }
+    .jump-btn:hover { border-color: var(--gold); }
+
+    .music-console { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 16px; text-align: left; }
+    .music-console .button-row { justify-content: flex-start; margin-top: 10px; }
+    .music-console .secondary { min-height: 42px; font-size: 13px; }
+    .music-console .quiet { margin: 0; }
+    .music-tip { margin-top: 8px !important; font-size: 11px; line-height: 1.6; }
+    .music-console b { color: var(--gold); font-weight: 500; }
+
+    /* ---- 铸币过程 ---- */
+    .mint-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 8px;
+      padding: clamp(16px, 3vh, 34px) clamp(16px, 3vw, 52px);
+      background:
+        radial-gradient(circle at 50% 8%, rgba(232,199,126,.1), transparent 38%),
+        radial-gradient(circle at 50% 96%, rgba(92,120,158,.16), transparent 52%),
+        #08090d;
+      opacity: 0;
+      visibility: hidden;
+      overflow-y: auto;
+      transition: opacity .45s ease, visibility .45s;
+    }
+    .mint-overlay.open { opacity: 1; visibility: visible; }
+    .mint-head { position: relative; width: min(100%, 860px); margin: 0 auto; text-align: center; }
+    .mint-head .eyebrow { margin-bottom: 8px; }
+    .mint-head h2 { font-size: clamp(24px, 3.4vw, 40px); margin-bottom: 8px; }
+    .mint-status { min-height: 20px; margin: 0; color: var(--gold); font-size: 13px; letter-spacing: .04em; }
+    .mint-close { position: fixed; right: clamp(14px, 3vw, 34px); top: clamp(14px, 3vh, 28px); z-index: 3; }
+    .mint-board {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
+      gap: clamp(12px, 2.6vw, 36px);
+      width: min(100%, 1180px);
+      margin: auto;
+      padding: 14px 0;
+    }
+    .mint-sources { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(8px, 1.2vw, 14px); }
+    .mint-source {
+      margin: 0;
+      padding: 7px;
+      border: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.03);
+      border-radius: 10px;
+      opacity: 0;
+      transform: translateY(16px) scale(.94);
+      transition: opacity .55s ease, transform .55s cubic-bezier(.2,.8,.2,1), filter .55s ease;
+    }
+    .mint-source .thumb { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 6px; background: #0c0e14; }
+    .mint-source img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .mint-source[data-kind="portrait"] img { object-position: 50% 14%; }
+    .mint-source figcaption { display: flex; flex-direction: column; gap: 2px; padding: 7px 2px 1px; }
+    .mint-source b { color: #ebe5da; font-size: 11px; font-weight: 600; }
+    .mint-source span { color: var(--muted); font-size: 9px; letter-spacing: .02em; }
+    .mint-overlay[data-step="1"] .mint-source,
+    .mint-overlay[data-step="2"] .mint-source,
+    .mint-overlay[data-step="3"] .mint-source,
+    .mint-overlay[data-step="4"] .mint-source,
+    .mint-overlay[data-step="5"] .mint-source,
+    .mint-overlay[data-step="6"] .mint-source { opacity: 1; transform: none; }
+    .mint-overlay[data-step="1"] .mint-source:nth-child(2) { transition-delay: .12s; }
+    .mint-overlay[data-step="1"] .mint-source:nth-child(3) { transition-delay: .24s; }
+    .mint-overlay[data-step="1"] .mint-source:nth-child(4) { transition-delay: .36s; }
+    .mint-overlay[data-step="2"] .mint-source,
+    .mint-overlay[data-step="3"] .mint-source,
+    .mint-overlay[data-step="4"] .mint-source,
+    .mint-overlay[data-step="5"] .mint-source,
+    .mint-overlay[data-step="6"] .mint-source { filter: saturate(.5) brightness(.68); transform: scale(.97); }
+
+    .mint-core { position: relative; width: clamp(154px, 19vw, 228px); aspect-ratio: 1; display: grid; place-items: center; }
+    .core-rings { position: absolute; inset: 0; border: 1px solid rgba(232,199,126,.16); border-radius: 50%; opacity: 0; transform: scale(.55); transition: opacity .7s, transform .7s; }
+    .core-rings::before, .core-rings::after { content: ""; position: absolute; border-radius: 50%; }
+    .core-rings::before { inset: 12%; border: 1px dashed rgba(232,199,126,.22); }
+    .core-rings::after { inset: 27%; border: 1px solid rgba(232,199,126,.14); }
+    .mint-overlay[data-step="2"] .core-rings,
+    .mint-overlay[data-step="3"] .core-rings,
+    .mint-overlay[data-step="4"] .core-rings,
+    .mint-overlay[data-step="5"] .core-rings,
+    .mint-overlay[data-step="6"] .core-rings { opacity: 1; transform: none; }
+    .mint-overlay[data-step="2"] .core-rings::before { animation: mintSpin 16s linear infinite; }
+    .mint-overlay[data-step="2"] .core-rings::after { animation: mintSpin 24s linear infinite reverse; }
+    @keyframes mintSpin { to { transform: rotate(360deg); } }
+    .core-orb {
+      position: absolute;
+      inset: 15%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 50% 36%, #fff3ca 0, #e8c77e 26%, rgba(215,90,74,.5) 58%, rgba(20,20,30,0) 74%);
+      filter: blur(3px);
+      opacity: 0;
+      transform: scale(.45);
+      transition: opacity .7s, transform .7s;
+    }
+    .mint-overlay[data-step="2"] .core-orb,
+    .mint-overlay[data-step="3"] .core-orb { opacity: .92; transform: scale(1); animation: corePulse 2s ease-in-out infinite; }
+    .mint-overlay[data-step="4"] .core-orb,
+    .mint-overlay[data-step="5"] .core-orb,
+    .mint-overlay[data-step="6"] .core-orb { opacity: .28; transform: scale(.82); animation: none; }
+    @keyframes corePulse { 50% { transform: scale(1.08); opacity: 1; } }
+    .core-avatar {
+      position: absolute;
+      width: 72%;
+      aspect-ratio: 1;
+      border: 1px solid rgba(232,199,126,.78);
+      border-radius: 50%;
+      overflow: hidden;
+      background: #0a0b10;
+      box-shadow: 0 0 42px rgba(232,199,126,.36), inset 0 0 22px rgba(0,0,0,.42);
+      opacity: 0;
+      transform: scale(.25) rotate(-8deg);
+      filter: blur(8px);
+      transition: opacity .8s, transform .8s cubic-bezier(.2,.8,.2,1), filter .8s;
+    }
+    .core-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 16%; }
+    .mint-overlay[data-step="3"] .core-avatar { opacity: 1; transform: none; filter: none; }
+    .mint-overlay[data-step="4"] .core-avatar,
+    .mint-overlay[data-step="5"] .core-avatar,
+    .mint-overlay[data-step="6"] .core-avatar { opacity: .34; transform: scale(.86); filter: saturate(.55); }
+    .core-tag { position: absolute; bottom: -5%; left: 50%; transform: translateX(-50%); color: var(--gold); font-size: 9px; letter-spacing: .22em; white-space: nowrap; opacity: 0; transition: opacity .5s; }
+    .mint-overlay[data-step="3"] .core-tag,
+    .mint-overlay[data-step="4"] .core-tag,
+    .mint-overlay[data-step="5"] .core-tag,
+    .mint-overlay[data-step="6"] .core-tag { opacity: .9; }
+
+    .mint-result { display: grid; justify-items: center; gap: 14px; opacity: 0; transform: scale(.72) rotateY(-38deg); transition: opacity .9s, transform .9s cubic-bezier(.2,.8,.2,1); }
+    .mint-overlay[data-step="4"] .mint-result,
+    .mint-overlay[data-step="5"] .mint-result,
+    .mint-overlay[data-step="6"] .mint-result { opacity: 1; transform: none; }
+    .mint-result .coin { --coin-size: clamp(168px, 22vw, 276px); }
+    .result-caption { min-height: 40px; margin: 0; color: #cfd6df; font-size: 10px; line-height: 1.9; letter-spacing: .14em; text-align: center; }
+    .result-caption b { display: block; color: var(--gold); font-size: 11px; font-weight: 600; }
+    .mint-overlay[data-step="4"] .coin-shine, .mint-overlay[data-step="5"] .coin-shine { animation-duration: 2.4s; }
+
+    .mint-foot { display: grid; gap: 12px; justify-items: center; padding-top: 4px; }
+    .mint-steps { display: flex; gap: 7px; }
+    .mint-steps i { width: 26px; height: 2px; background: rgba(255,255,255,.14); transition: background .3s; }
+    .mint-steps i.on { background: var(--gold); }
+    .mint-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .mint-actions .primary, .mint-actions .secondary { min-height: 44px; }
+    .merge-particle { position: fixed; z-index: 45; width: 6px; height: 6px; border-radius: 50%; background: #ffedb8; box-shadow: 0 0 10px #e8c77e; pointer-events: none; }
+    .mint-flash { position: fixed; inset: 0; z-index: 70; background: #fff; opacity: 0; pointer-events: none; }
+    .mint-flash.fire { animation: mintFlash .9s ease-out forwards; }
+    @keyframes mintFlash { 0% { opacity: 0; } 9% { opacity: .82; } 100% { opacity: 0; } }
+
+    /* ---- 最后的模型竞猜 ---- */
+    .model-quiz { width: min(100%, 880px); }
+    .guess-grid { display: grid; gap: 14px; margin: 24px 0 0; }
+    .guess-block { padding: 16px 18px; border: 1px solid var(--line); background: rgba(255,255,255,.035); border-radius: 10px; text-align: left; }
+    .guess-title { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; color: #e8e1d5; font-size: 14px; }
+    .guess-title .idx { color: var(--gold); font: 600 22px/1 "STSong", serif; }
+    .model-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .token-options { grid-template-columns: repeat(4, 1fr); }
+    @media (min-width: 900px) {
+      .guess-block[data-guess="code"] .model-options,
+      .guess-block[data-guess="image"] .model-options { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    }
+    .model-btn {
+      min-height: 44px;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: rgba(255,255,255,.03);
+      cursor: pointer;
+      font-size: 14px;
+      transition: background .2s, border-color .2s, transform .2s;
+    }
+    .model-btn:hover { border-color: rgba(232,199,126,.5); background: rgba(255,255,255,.06); transform: translateY(-1px); }
+    .model-btn.picked { border-color: var(--red-2); background: rgba(215,90,74,.16); }
+    .model-btn.correct { border-color: #6f9d7a; background: rgba(111,157,122,.2); color: #d9f0df; }
+    .model-btn.wrong { border-color: #a14a4a; background: rgba(161,74,74,.13); opacity: .65; }
+    .model-btn:disabled { cursor: default; transform: none; }
+    .guess-actions { margin-top: 20px; text-align: center; }
+    .guess-result { min-height: 30px; margin-top: 18px; color: #e4ddd1; line-height: 1.8; text-align: center; }
+    .answer-reveal { display: grid; gap: 8px; width: min(100%, 520px); margin: 0 auto 14px; }
+    .answer-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 11px 14px; border: 1px solid var(--line); background: rgba(255,255,255,.035); border-radius: 7px; font-size: 13px; }
+    .answer-row span { color: var(--muted); }
+    .answer-row b { color: var(--gold); font-weight: 600; }
+    .answer-row em { font-style: normal; font-size: 12px; }
+    .answer-row em.ok { color: #9ed3ab; }
+    .answer-row em.no { color: #e09a8e; }
+    .guess-line { margin: 0; color: #e8e1d5; }
+    .final-note {
+      display: none;
+      margin-top: 22px;
+      padding: 24px 22px;
+      border: 1px solid rgba(232,199,126,.24);
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(232,199,126,.07), rgba(232,199,126,0));
+    }
+    .final-note.show { display: block; animation: noteIn .8s ease both; }
+    @keyframes noteIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+    .final-note .sign { margin: 0; color: #f3ecdd; font-family: "STSong", serif; font-size: clamp(17px, 2.2vw, 23px); line-height: 1.9; }
+    .final-note .sign strong { color: var(--gold); font-weight: 600; }
+    .final-note .quiet { margin: 14px 0 0; }
+
+    /* ---- 正在播放 ---- */
+    .now-playing {
+      position: fixed;
+      left: 20px;
+      bottom: 58px;
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(10, 10, 16, .78);
+      backdrop-filter: blur(8px);
+      color: var(--muted);
+      font-size: 11px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(8px);
+      transition: opacity .35s, transform .35s, visibility .35s;
+      pointer-events: none;
+    }
+    .now-playing.show { opacity: 1; visibility: visible; transform: none; }
+    .eq { display: flex; align-items: flex-end; gap: 2px; height: 12px; }
+    .eq i { width: 2px; height: 35%; background: var(--gold); animation: eqBounce 1s ease-in-out infinite; }
+    .eq i:nth-child(2) { animation-delay: -.32s; }
+    .eq i:nth-child(3) { animation-delay: -.64s; }
+    .eq i:nth-child(4) { animation-delay: -.16s; }
+    @keyframes eqBounce { 50% { height: 100%; } }
+    .blackout { background: #000; cursor: none; }
+    .blackout > * { display: none; }
+
+    .toast { position: fixed; left: 50%; bottom: 72px; z-index: 30; transform: translate(-50%, 18px); background: #f5efe4; color: #1c1a1b; padding: 10px 16px; border-radius: 5px; font-size: 13px; opacity: 0; pointer-events: none; transition: .25s; box-shadow: var(--shadow); }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    .spark { position: fixed; width: 7px; height: 7px; pointer-events: none; z-index: 60; animation: spark .9s ease-out forwards; }
+    @keyframes spark { to { transform: translate(var(--dx), var(--dy)) rotate(180deg); opacity: 0; } }
+
+    @media (max-width: 980px) {
+      .mint-board { grid-template-columns: 1fr; gap: 18px; width: min(100%, 760px); padding: 8px 0 18px; }
+      .mint-sources { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+      .mint-source { padding: 5px; }
+      .mint-source figcaption { padding-top: 5px; }
+      .mint-source span { display: none; }
+      .mint-core { width: min(190px, 42vw); margin: 0 auto; }
+      .mint-result .coin { --coin-size: min(210px, 44vw); }
+    }
+
+    @media (max-width: 760px) {
+      .topbar { padding-inline: 12px; }
+      .brand span:last-child { display: none; }
+      .progress-track { width: 88px; }
+      .scene { padding: 20px; }
+      .choices, .constellation-layout, .leaf-layout, .gift-wrap { grid-template-columns: 1fr; }
+      .choice { min-height: 60px; }
+      .constellation-layout { gap: 20px; }
+      .star-field { width: min(100%, 430px); min-height: 280px; margin: auto; }
+      .leaf-board { width: min(100%, 430px); margin: auto; }
+      .leaf-copy, .gift-message { text-align: center; }
+      .gift-actions, .coin-tools { justify-content: center; }
+      .gift-quote { text-align: left; }
+      .coin { --coin-size: min(218px, 56vw); }
+      .coin-stage { gap: 10px; padding-top: 4px; }
+      .coin-meta { gap: 5px; }
+      .coin-tools .secondary { min-height: 38px; font-size: 12px; }
+      .gift-quote { margin: 16px 0; padding: 12px 0 12px 16px; font-size: 14px; }
+      .gift-body { font-size: 13px; line-height: 1.8; margin-bottom: 16px; }
+      .gift-note { display: none; }
+      .response-options { grid-template-columns: 1fr; }
+      footer span:first-child { display: none; }
+      .modal-grid { grid-template-columns: 1fr; }
+      .mint-overlay { padding: 12px; gap: 6px; }
+      .mint-head { padding: 0 34px; }
+      .mint-head h2 { font-size: 22px; }
+      .mint-status { font-size: 12px; }
+      .mint-source b { font-size: 10px; }
+      .mint-core { width: min(150px, 42vw); }
+      .mint-result .coin { --coin-size: min(188px, 50vw); }
+      .mint-steps i { width: 18px; }
+      .model-options { grid-template-columns: repeat(3, 1fr); }
+      .token-options { grid-template-columns: repeat(2, 1fr); }
+      .guess-block { padding: 14px; }
+      .guess-title { font-size: 13px; }
+      .answer-row { flex-wrap: wrap; gap: 3px 10px; }
+      .now-playing { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="sky" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="brand"><i class="brand-mark" aria-hidden="true"></i><span>枫叶特别行动</span></div>
+      <div class="progress-wrap" aria-label="任务进度">
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <span class="progress-label" id="progressLabel">00 / 07</span>
+      </div>
+      <div class="tools">
+        <button class="icon-btn" id="soundBtn" type="button" title="声音开关" aria-label="声音开关">♪</button>
+        <button class="icon-btn" id="fullBtn" type="button" title="进入全屏" aria-label="进入全屏">⛶</button>
+        <button class="icon-btn" id="controlBtn" type="button" title="现场控制台" aria-label="现场控制台">•••</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="scene active" data-scene="0">
+        <div class="narrow">
+          <div class="seal" aria-hidden="true">密</div>
+          <p class="eyebrow">一封等待了很久的魔法委托</p>
+          <h1>致 <span class="intro-name" data-her-name>你</span></h1>
+          <p class="lead">今晚，有一件只和你有关的小事。<br>需要一点默契、一点想象力，还有一片枫叶。</p>
+          <button class="primary" id="startBtn" type="button">领取委托</button>
+          <p class="quiet" style="margin-top: 18px">建议打开声音 · 全程约 6 分钟</p>
+        </div>
+      </section>
+
+      <section class="scene" data-scene="1">
+        <div class="scene-inner">
+          <p class="eyebrow">任务一 · 默契校验</p>
+          <div class="quest-head">
+            <span class="quest-no" id="quizNo">01</span>
+            <p class="question" id="questionText"></p>
+          </div>
+          <div class="choices" id="choices"></div>
+          <div class="answer-note" id="answerNote" aria-live="polite"></div>
+          <div class="button-row">
+            <button class="primary" id="quizNext" type="button" disabled>下一题</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene" data-scene="2">
+        <div class="scene-inner constellation-layout">
+          <div class="world-copy">
+            <p class="eyebrow">任务二 · 点亮她的世界</p>
+            <h2>有些喜欢，<br>本来就不止一种样子</h2>
+            <p class="lead">依次点亮五颗星。每一颗，都是你身上让我觉得可爱的部分。</p>
+            <div class="trait-list" id="traitList">
+              <div class="trait"><i></i><span>会为故事里真挚的感情心动</span></div>
+              <div class="trait"><i></i><span>有自己的柔软，也有自己的坚持</span></div>
+              <div class="trait"><i></i><span>走过很远的地方，仍然保留好奇心</span></div>
+              <div class="trait"><i></i><span>认真工作，也认真期待生活</span></div>
+              <div class="trait"><i></i><span>能把一顿有肉的饭吃得特别幸福</span></div>
+            </div>
+            <div class="world-status" id="worldStatus">0 / 5 颗星已点亮</div>
+          </div>
+          <div>
+            <div class="star-field" id="starField" aria-label="点击星星点亮星图">
+              <span class="star-line" style="left:18%;top:26%;width:37%;transform:rotate(25deg)"></span>
+              <span class="star-line" style="left:48%;top:48%;width:38%;transform:rotate(-31deg)"></span>
+              <span class="star-line" style="left:23%;top:74%;width:35%;transform:rotate(-46deg)"></span>
+              <span class="star-line" style="left:55%;top:30%;width:28%;transform:rotate(67deg)"></span>
+              <button class="star-node" style="left:8%;top:16%" data-star="0" aria-label="点亮故事星"><i class="star-label">故事</i></button>
+              <button class="star-node" style="left:44%;top:36%" data-star="1" aria-label="点亮温柔星"><i class="star-label">温柔</i></button>
+              <button class="star-node" style="left:74%;top:12%" data-star="2" aria-label="点亮远方星"><i class="star-label">远方</i></button>
+              <button class="star-node" style="left:17%;top:65%" data-star="3" aria-label="点亮认真星"><i class="star-label">认真</i></button>
+              <button class="star-node" style="left:68%;top:67%" data-star="4" aria-label="点亮好胃口星"><i class="star-label">好胃口</i></button>
+            </div>
+            <div class="button-row"><button class="primary" id="worldNext" type="button" disabled>星图完成</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene" data-scene="3">
+        <div class="scene-inner leaf-layout">
+          <div class="leaf-board"><canvas id="leafCanvas" aria-label="收集发光碎片，拼成枫叶"></canvas></div>
+          <div class="leaf-copy">
+            <p class="eyebrow">任务三 · 收集一片枫叶</p>
+            <h2>把散落的光，<br>收进一片枫叶里</h2>
+            <p class="lead">点击画面中的发光碎片。这片枫叶不是终点——它会被铸进一枚银币里，背面留给你，正面也留给你。</p>
+            <div class="leaf-meter">
+              <div class="leaf-meter-track"><div class="leaf-meter-fill" id="leafMeter"></div></div>
+              <span class="leaf-count" id="leafCount">0 / 8</span>
+            </div>
+            <button class="primary" id="leafNext" type="button" disabled>去铸币</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene" data-scene="4">
+        <div class="scene-inner gift-wrap">
+          <div class="coin-stage">
+            <div class="coin" id="giftCoin" role="button" tabindex="0" aria-label="定制银币，点击翻面">
+              <div class="coin-face"><img src="assets/coin-obverse.jpg" alt="银币正面：Cami 的头像，刻着 CAMI I D·G·REGINA"></div>
+              <div class="coin-face coin-back"><img src="assets/coin-reverse.jpg" alt="银币背面：加拿大枫叶"></div>
+            </div>
+            <p class="coin-caption" id="coinCaption">正面 · <b>CAMI I · D·G·REGINA</b></p>
+            <div class="coin-meta">
+              <span class="coin-chip">1 OZ · 9999</span>
+              <span class="coin-chip">5 DOLLARS</span>
+              <span class="coin-chip">2026</span>
+            </div>
+            <div class="coin-tools">
+              <button class="secondary" type="button" id="coinFlipBtn">翻到枫叶面</button>
+              <button class="secondary" type="button" id="giftMintBtn2">看它怎么铸成</button>
+            </div>
+          </div>
+          <div class="gift-message">
+            <p class="eyebrow">任务奖励 · 一枚以你命名的银币</p>
+            <h2>正面刻你的名字，<br>背面留着那片枫叶</h2>
+            <p class="gift-quote">“听说接住枫叶的人，会和喜欢的人相遇。<br>所以这次，我把它铸进了一枚银币里。”</p>
+            <p class="gift-body">2020 年，这枚加拿大银枫叶的正面还是伊丽莎白二世。2026 年，我把那个位置换成了你：<strong>CAMI I · D·G·REGINA</strong>。枫叶那一面，我一点也没改。</p>
+            <div class="gift-actions">
+              <button class="primary" type="button" id="giftNext">把银币交给你</button>
+              <button class="secondary" type="button" id="giftMintBtn">看制作过程</button>
+            </div>
+            <p class="quiet gift-note">这里适合由你拿出准备好的那枚实体银币。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene" data-scene="5">
+        <div class="confession">
+          <p class="eyebrow">最终任务 · 这一段请由我亲口说</p>
+          <h2><span data-her-name>你</span>，我喜欢你</h2>
+          <p class="confession-text" id="confessionText"></p>
+          <p class="hand-over">现在，请把屏幕放到一边，看着她说完你真正想说的话。</p>
+          <button class="primary" id="askBtn" type="button">我说完了</button>
+        </div>
+      </section>
+
+      <section class="scene" data-scene="6">
+        <div class="confession">
+          <p class="eyebrow">委托的最后一页</p>
+          <h2>你愿意让我们<br>从今天开始吗？</h2>
+          <p class="lead">不着急，也没有标准答案。你的真实感受最重要。</p>
+          <div class="response-options">
+            <button class="primary" type="button" data-response="yes">我愿意</button>
+            <button class="secondary" type="button" data-response="hug">先抱抱你</button>
+            <button class="secondary" type="button" data-response="think">让我认真想一想</button>
+          </div>
+          <div class="response-result" id="responseResult" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="scene" data-scene="7">
+        <div class="scene-inner model-quiz">
+          <p class="eyebrow">最后的彩蛋 · 猜猜谁干的</p>
+          <h2>这封委托，<br>是谁帮你做出来的？</h2>
+          <p class="lead">写代码的、画这枚银币的，分别是一个 AI。<br>最后再猜猜：为了做这个网页，大概烧掉了多少 token。</p>
+          <div class="guess-grid">
+            <div class="guess-block" data-guess="code">
+              <p class="guess-title"><span class="idx">01</span> 这页程序，由谁写</p>
+              <div class="model-options" role="group" aria-label="选择写代码的模型"></div>
+            </div>
+            <div class="guess-block" data-guess="image">
+              <p class="guess-title"><span class="idx">02</span> 这枚银币，由谁画</p>
+              <div class="model-options" role="group" aria-label="选择画图的模型"></div>
+            </div>
+            <div class="guess-block" data-guess="tokens">
+              <p class="guess-title"><span class="idx">03</span> 做这个网页，烧掉多少 token</p>
+              <div class="model-options token-options" role="group" aria-label="选择消耗的 token 量级"></div>
+            </div>
+          </div>
+          <div class="guess-actions">
+            <button class="primary" id="guessSubmit" type="button" disabled>揭晓答案</button>
+          </div>
+          <div class="guess-result" id="guessResult" aria-live="polite"></div>
+          <div class="final-note" id="finalNote">
+            <p class="sign">写代码的是 <strong id="codeModelName">DeepSeek</strong>，画图的是 <strong id="imageModelName">Qwen</strong>。<br>为了这页程序，烧掉了 <strong id="tokenCostName">5,000 万</strong> token。<br>但把你请进这个故事的人，是我。</p>
+            <p class="quiet">程序的最后一行，想留给你：<br><strong>Cami，往后的故事，我们一起写。</strong></p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span><span class="key">M</span> 静音　<span class="key">F</span> 全屏　<span class="key">B</span> 黑屏　<span class="key">O</span> 控制台</span>
+      <span id="footerHint">点击“领取委托”开始</span>
+    </footer>
+  </div>
+
+  <div class="mint-overlay" id="mintOverlay" data-step="0" role="dialog" aria-modal="true" aria-labelledby="mintTitle" aria-hidden="true">
+    <div class="mint-flash" id="mintFlash" aria-hidden="true"></div>
+    <div class="mint-head">
+      <button class="icon-btn mint-close" id="mintClose" type="button" aria-label="关闭制作过程">×</button>
+      <p class="eyebrow">定制记录 · 2026</p>
+      <h2 id="mintTitle">从四张素材，到一枚银币</h2>
+      <p class="mint-status" id="mintStatus">准备素材…</p>
+    </div>
+    <div class="mint-board">
+      <div class="mint-sources" aria-label="原始素材">
+        <figure class="mint-source" data-kind="coin">
+          <div class="thumb"><img src="assets/material-leaf.jpg" alt="加拿大银枫叶的枫叶面"></div>
+          <figcaption><b>枫叶面</b><span>加拿大银枫叶 · 2020</span></figcaption>
+        </figure>
+        <figure class="mint-source" data-kind="coin">
+          <div class="thumb"><img src="assets/material-queen.jpg" alt="伊丽莎白二世头像面"></div>
+          <figcaption><b>女王面</b><span>伊丽莎白二世 · 原版</span></figcaption>
+        </figure>
+        <figure class="mint-source" data-kind="portrait">
+          <div class="thumb"><img src="assets/material-cami-a.jpg" alt="Cami 的证件照"></div>
+          <figcaption><b>Cami · 照片 A</b><span>证件照</span></figcaption>
+        </figure>
+        <figure class="mint-source" data-kind="portrait">
+          <div class="thumb"><img src="assets/material-cami-b.jpg" alt="Cami 的生活照"></div>
+          <figcaption><b>Cami · 照片 B</b><span>生活照</span></figcaption>
+        </figure>
+      </div>
+      <div class="mint-core" id="mintCore" aria-label="融合生成 Cami 肖像">
+        <span class="core-rings" aria-hidden="true"></span>
+        <span class="core-orb" aria-hidden="true"></span>
+        <span class="core-avatar"><img src="assets/cami-avatar.jpg" alt="融合生成的 Cami 肖像"></span>
+        <span class="core-tag">CAMI · 肖像</span>
+      </div>
+      <div class="mint-result">
+        <div class="coin" id="mintCoin" aria-label="定制银币成品">
+          <div class="coin-face"><img src="assets/coin-obverse.jpg" alt="银币正面：Cami 头像"></div>
+          <div class="coin-face coin-back"><img src="assets/coin-reverse.jpg" alt="银币背面：枫叶"></div>
+        </div>
+        <p class="result-caption" id="mintCaption"><b>CAMI I · D·G·REGINA</b>5 DOLLARS · 2026</p>
+      </div>
+    </div>
+    <div class="mint-foot">
+      <div class="mint-steps" id="mintSteps" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="mint-actions">
+        <button class="secondary" type="button" id="mintSkip">跳过动画</button>
+        <button class="secondary" type="button" id="mintReplay">重播</button>
+        <button class="primary" type="button" id="mintDone">收下这枚银币</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="now-playing" id="nowPlaying" role="status">
+    <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    <span id="nowPlayingText">Stay With Me</span>
+  </div>
+
+  <div class="overlay" id="controlOverlay" role="dialog" aria-modal="true" aria-labelledby="controlTitle">
+    <div class="modal">
+      <h3 id="controlTitle">现场控制台</h3>
+      <p class="quiet">给你临场使用。跳转不会丢失已完成的互动状态。</p>
+      <div class="modal-grid">
+        <button class="jump-btn" type="button" data-jump="0">00　回到开场</button>
+        <button class="jump-btn" type="button" data-jump="1">01　默契校验</button>
+        <button class="jump-btn" type="button" data-jump="2">02　点亮星图</button>
+        <button class="jump-btn" type="button" data-jump="3">03　枫叶任务</button>
+        <button class="jump-btn" type="button" data-jump="4">04　拿出礼物</button>
+        <button class="jump-btn" type="button" data-jump="5">05　正式告白</button>
+        <button class="jump-btn" type="button" data-jump="6">06　问出那句话</button>
+        <button class="jump-btn" type="button" data-jump="7">07　模型竞猜</button>
+      </div>
+      <div class="button-row">
+        <button class="secondary" id="blackBtn" type="button">应急黑屏</button>
+        <button class="primary" id="closeControl" type="button">返回现场</button>
+      </div>
+      <div class="music-console">
+        <p class="quiet">现场音乐：<b id="musicName">Stay With Me</b>（放在同一文件夹即可）</p>
+        <div class="button-row">
+          <button class="secondary" type="button" id="pickMusicBtn">选择本地音乐</button>
+          <button class="secondary" type="button" id="testMusicBtn">试听 / 暂停</button>
+        </div>
+        <input type="file" id="musicFile" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden>
+        <p class="quiet music-tip">没声音时：iPad 检查侧边静音开关；Mac 检查右上角输出设备；Safari 检查标签页是否被静音。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    // 后续只需要改这里，就能替换称呼、音乐和核心文案。
+    const CONFIG = {
+      herName: "Cami",
+      yourName: "",
+      // 把 mp3 放在和网页文件同一目录；为避免空格/中文，文件名叫 music.mp3 最稳。
+      finalMusic: "music.mp3",
+      musicTitle: "Stay With Me",
+      musicVolume: 0.72,
+      // 最后几道题的正确答案：写代码 / 画图分别是谁、消耗多少 token。
+      codeModel: "deepseek",
+      imageModel: "qwen",
+      tokenAnswer: "50m",
+      confession: [
+        "我喜欢你的可爱、认真和柔软，也喜欢你聊到喜欢的故事时，眼睛里那种藏不住的兴奋。",
+        "我不能保证生活会像小说一样每一章都恰到好处，但我想认真地了解你、陪着你，把普通的日子一起过成值得收藏的情节。",
+        "所以今天，我想问的不是一个游戏问题，而是：Cami，你愿意和我在一起吗？"
+      ]
+    };
+
+    const quiz = [
+      {
+        question: "如果今晚只能解锁一种隐藏奖励，你会选？",
+        answers: ["一桌认真准备的肉", "一部让人磕到上头的故事", "一张去远方的机票", "一份神秘的魔法礼物"],
+        note: "收到。真正的隐藏奖励是：以后这些选项，我都想慢慢陪你实现。"
+      },
+      {
+        question: "一段让人心动的关系，最重要的魔法是什么？",
+        answers: ["永远有话可说", "看见并尊重彼此", "一起探索新世界", "关键时刻站在对方身边"],
+        note: "没有唯一答案。因为好的感情，本来就可以同时拥有很多种样子。"
+      },
+      {
+        question: "如果把人生写成一本小说，你希望下一章叫什么？",
+        answers: ["好好吃饭", "去看更大的世界", "被坚定地选择", "故事从今天开始"],
+        note: "答案已记录。接下来的剧情，需要两位主角一起决定。"
+      }
+    ];
+
+    const state = { scene: 0, quizIndex: 0, selected: false, litStars: new Set(), leafFound: new Set(), sound: true, started: false };
+    const scenes = [...document.querySelectorAll(".scene")];
+    const progressFill = document.getElementById("progressFill");
+    const progressLabel = document.getElementById("progressLabel");
+    const footerHint = document.getElementById("footerHint");
+    const toast = document.getElementById("toast");
+    let audioCtx = null;
+    let musicTimer = null;
+    let musicSessionActive = false;
+
+    document.querySelectorAll("[data-her-name]").forEach(el => el.textContent = CONFIG.herName);
+    document.getElementById("confessionText").innerHTML = CONFIG.confession.join("<br><br>");
+
+    const TOTAL_SCENES = 7;
+
+    function goTo(index) {
+      state.scene = Math.max(0, Math.min(TOTAL_SCENES, index));
+      scenes.forEach((scene, i) => scene.classList.toggle("active", i === state.scene));
+      progressFill.style.width = `${state.scene / TOTAL_SCENES * 100}%`;
+      progressLabel.textContent = `${String(state.scene).padStart(2, "0")} / ${String(TOTAL_SCENES).padStart(2, "0")}`;
+      const hints = [
+        "点击“领取委托”开始",
+        "选择你最喜欢的答案",
+        "点亮全部五颗星",
+        "找到八枚发光碎片",
+        "翻一翻这枚银币，或看看它怎么铸成",
+        "这段请看着她亲口说",
+        "把选择权认真交给她",
+        "最后一道题：猜猜是谁做的"
+      ];
+      footerHint.textContent = hints[state.scene];
+      document.getElementById("controlOverlay").classList.remove("open");
+      if (state.scene !== 4) closeMint();
+      if (state.scene === 0 || state.scene === 6) resetResponses();
+      if (state.scene === 7) resetGuess();
+      if (state.scene === 1 && !document.getElementById("questionText").textContent) renderQuestion();
+      if (state.scene === 3) setTimeout(resizeLeafCanvas, 80);
+    }
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function burst(x, y, count = 14, colors = ["#e8c77e", "#d75a4a", "#f8f4eb"]) {
+      for (let i = 0; i < count; i++) {
+        const el = document.createElement("i");
+        el.className = "spark";
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        el.style.background = colors[i % colors.length];
+        const angle = Math.PI * 2 * i / count;
+        const distance = 40 + Math.random() * 80;
+        el.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+        el.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+      }
+    }
+
+    function tone(freq, duration = .18, volume = .035, delay = 0) {
+      // 指定音乐播放时不再用 WebAudio 出声：Safari/iPadOS 会把两套音频会话互相打断。
+      if (!audioCtx || !state.sound || musicSessionActive) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, audioCtx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + delay + .02);
+      gain.gain.exponentialRampToValueAtTime(.0001, audioCtx.currentTime + delay + duration);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(audioCtx.currentTime + delay);
+      osc.stop(audioCtx.currentTime + delay + duration + .02);
+    }
+
+    function startMusic() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      clearInterval(musicTimer);
+      const notes = [261.63, 329.63, 392, 493.88, 392, 329.63, 293.66, 369.99, 440, 369.99];
+      let step = 0;
+      musicTimer = setInterval(() => {
+        if (state.sound && !document.body.classList.contains("blackout")) {
+          tone(notes[step % notes.length], .7, .012);
+          if (step % 2 === 0) tone(notes[step % notes.length] / 2, 1.1, .008, .06);
+          step++;
+        }
+      }, 900);
+    }
+
+    document.getElementById("startBtn").addEventListener("click", e => {
+      state.started = true;
+      if (!musicWanted) startMusic();
+      tone(523.25, .35, .04); tone(659.25, .45, .03, .16); tone(783.99, .55, .025, .32);
+      burst(e.clientX, e.clientY, 18);
+      renderQuestion();
+      setTimeout(() => goTo(1), 420);
+    });
+
+    function renderQuestion() {
+      const item = quiz[state.quizIndex];
+      state.selected = false;
+      document.getElementById("quizNo").textContent = String(state.quizIndex + 1).padStart(2, "0");
+      document.getElementById("questionText").textContent = item.question;
+      document.getElementById("answerNote").textContent = "";
+      const next = document.getElementById("quizNext");
+      next.disabled = true;
+      next.textContent = state.quizIndex === quiz.length - 1 ? "校验完成" : "下一题";
+      const choices = document.getElementById("choices");
+      choices.innerHTML = "";
+      item.answers.forEach((answer, index) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice";
+        btn.innerHTML = `<span class="choice-token">${String.fromCharCode(65 + index)}</span><span>${answer}</span>`;
+        btn.addEventListener("click", () => {
+          choices.querySelectorAll(".choice").forEach(x => x.classList.remove("selected"));
+          btn.classList.add("selected");
+          state.selected = true;
+          next.disabled = false;
+          document.getElementById("answerNote").textContent = item.note;
+          tone(440 + index * 55, .25, .03);
+        });
+        choices.appendChild(btn);
+      });
+    }
+
+    document.getElementById("quizNext").addEventListener("click", () => {
+      if (!state.selected) return;
+      if (state.quizIndex < quiz.length - 1) {
+        state.quizIndex++;
+        renderQuestion();
+      } else goTo(2);
+    });
+
+    document.querySelectorAll(".star-node").forEach(node => {
+      node.addEventListener("click", e => {
+        const index = Number(node.dataset.star);
+        if (state.litStars.has(index)) return;
+        state.litStars.add(index);
+        node.classList.add("lit");
+        document.querySelectorAll(".trait")[index].classList.add("lit");
+        document.getElementById("worldStatus").textContent = `${state.litStars.size} / 5 颗星已点亮`;
+        tone([523.25, 587.33, 659.25, 783.99, 880][index], .45, .03);
+        const rect = node.getBoundingClientRect();
+        burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 10, ["#e8c77e", "#fff4cc"]);
+        if (state.litStars.size === 5) {
+          document.getElementById("starField").classList.add("ready");
+          document.getElementById("worldStatus").textContent = "星图完成：原来我喜欢的，是完整而真实的你。";
+          document.getElementById("worldNext").disabled = false;
+        }
+      });
+    });
+    document.getElementById("worldNext").addEventListener("click", () => goTo(3));
+
+    const leafCanvas = document.getElementById("leafCanvas");
+    const leafCtx = leafCanvas.getContext("2d");
+    const fragments = [
+      [.14,.24], [.43,.15], [.76,.22], [.25,.48], [.58,.42], [.84,.57], [.38,.73], [.68,.79]
+    ];
+
+    function resizeLeafCanvas() {
+      const rect = leafCanvas.getBoundingClientRect();
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      leafCanvas.width = Math.max(1, rect.width * ratio);
+      leafCanvas.height = Math.max(1, rect.height * ratio);
+      leafCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      drawLeafGame(performance.now());
+    }
+
+    function leafPath(ctx, cx, cy, scale) {
+      const pts = [[0,-1],[.13,-.53],[.42,-.75],[.34,-.35],[.77,-.41],[.57,-.06],[.96,.08],[.48,.22],[.34,.72],[0,.48],[-.34,.72],[-.48,.22],[-.96,.08],[-.57,-.06],[-.77,-.41],[-.34,-.35],[-.42,-.75],[-.13,-.53]];
+      ctx.beginPath();
+      pts.forEach(([x,y], i) => i ? ctx.lineTo(cx + x * scale, cy + y * scale) : ctx.moveTo(cx + x * scale, cy + y * scale));
+      ctx.closePath();
+    }
+
+    function drawLeafGame(time) {
+      const w = leafCanvas.clientWidth;
+      const h = leafCanvas.clientHeight;
+      leafCtx.clearRect(0, 0, w, h);
+      leafCtx.save();
+      leafCtx.globalAlpha = .12 + state.leafFound.size * .075;
+      leafPath(leafCtx, w * .5, h * .5, Math.min(w, h) * .33);
+      const gradient = leafCtx.createRadialGradient(w*.5,h*.48,10,w*.5,h*.5,Math.min(w,h)*.35);
+      gradient.addColorStop(0, "#f3a66b"); gradient.addColorStop(1, "#9d3140");
+      leafCtx.fillStyle = gradient; leafCtx.fill();
+      leafCtx.strokeStyle = "rgba(232,199,126,.6)"; leafCtx.lineWidth = 1; leafCtx.stroke();
+      leafCtx.restore();
+
+      fragments.forEach(([px, py], index) => {
+        if (state.leafFound.has(index)) return;
+        const x = px * w; const y = py * h;
+        const pulse = 1 + Math.sin(time / 500 + index) * .18;
+        leafCtx.save();
+        leafCtx.shadowColor = "#e8c77e"; leafCtx.shadowBlur = 18 * pulse;
+        leafCtx.translate(x, y); leafCtx.rotate(time / 1800 + index);
+        leafCtx.fillStyle = "#f8e4aa";
+        leafCtx.beginPath();
+        for (let p = 0; p < 8; p++) {
+          const a = p * Math.PI / 4;
+          const r = p % 2 ? 4 : 10 * pulse;
+          leafCtx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        leafCtx.closePath(); leafCtx.fill(); leafCtx.restore();
+      });
+      if (state.scene === 3) requestAnimationFrame(drawLeafGame);
+    }
+
+    leafCanvas.addEventListener("pointerdown", e => {
+      const rect = leafCanvas.getBoundingClientRect();
+      const x = e.clientX - rect.left; const y = e.clientY - rect.top;
+      fragments.forEach(([px, py], index) => {
+        if (state.leafFound.has(index)) return;
+        if (Math.hypot(x - px * rect.width, y - py * rect.height) < 30) {
+          state.leafFound.add(index);
+          tone(523.25 + state.leafFound.size * 45, .3, .035);
+          burst(e.clientX, e.clientY, 12);
+          const count = state.leafFound.size;
+          document.getElementById("leafCount").textContent = `${count} / 8`;
+          document.getElementById("leafMeter").style.width = `${count / 8 * 100}%`;
+          if (count === 8) {
+            document.getElementById("leafNext").disabled = false;
+            showToast("枫叶制作完成");
+          }
+        }
+      });
+    });
+
+    document.getElementById("leafNext").addEventListener("click", () => goTo(4));
+    document.getElementById("giftNext").addEventListener("click", () => goTo(5));
+    document.getElementById("askBtn").addEventListener("click", () => goTo(6));
+
+    function resetResponses() {
+      document.getElementById("responseResult").innerHTML = "";
+      document.querySelectorAll("[data-response]").forEach(btn => {
+        btn.disabled = false;
+        delete btn.dataset.locked;
+      });
+    }
+
+    document.querySelectorAll("[data-response]").forEach(btn => {
+      btn.addEventListener("click", e => {
+        const result = document.getElementById("responseResult");
+        const value = btn.dataset.response;
+        if (value === "yes") {
+          if (btn.dataset.locked) return;
+          btn.dataset.locked = "1";
+          document.querySelectorAll("[data-response]").forEach(b => { b.disabled = true; });
+          result.innerHTML = `<strong class="celebrate">委托完成。</strong><br>接下来的这首歌，是给你的。`;
+          const next = document.createElement("button");
+          next.type = "button";
+          next.className = "primary";
+          next.textContent = "最后一道题";
+          next.addEventListener("click", () => {
+            tone(659.25, .3, .03);
+            goTo(7);
+          });
+          result.appendChild(document.createElement("br"));
+          result.appendChild(next);
+          burst(innerWidth / 2, innerHeight / 2, 40);
+          startFinalMusic();
+        } else if (value === "hug") {
+          result.textContent = "屏幕先到这里。现在，认真抱抱她。";
+          tone(523.25, .5, .025); tone(659.25, .6, .02, .18);
+        } else {
+          result.textContent = "谢谢你认真对待这份心意。慢慢想，我尊重你的节奏和答案。";
+          tone(392, .5, .02);
+        }
+      });
+    });
+
+    function toggleSound() {
+      state.sound = !state.sound;
+      document.getElementById("soundBtn").textContent = state.sound ? "♪" : "×";
+      document.getElementById("soundBtn").setAttribute("aria-label", state.sound ? "关闭声音" : "打开声音");
+      if (state.sound) {
+        if (musicWanted && !musicFallback) {
+          // 指定音乐模式：只恢复 HTMLAudio，不要重新唤醒 AudioContext。
+          finalMusic.muted = false;
+          finalMusic.volume = CONFIG.musicVolume;
+          if (finalMusic.paused) {
+            finalMusic.play().then(() => showNowPlaying(trackLabel)).catch(() => startFallbackMusic());
+          } else {
+            showNowPlaying(trackLabel);
+          }
+        } else {
+          ensureAudio();
+          if (musicFallback) {
+            pauseFallback();
+            startFallbackMusic(true);
+          } else if (state.started) {
+            if (!musicTimer) startMusic();
+            tone(523.25, .25, .03);
+          }
+        }
+      } else {
+        if (musicFallback) pauseFallback();
+        finalMusic.muted = true;
+        hideNowPlaying();
+      }
+      showToast(state.sound ? "声音已打开" : "声音已关闭");
+    }
+
+    document.getElementById("soundBtn").addEventListener("click", toggleSound);
+    document.getElementById("fullBtn").addEventListener("click", () => {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+      else document.exitFullscreen?.();
+    });
+    document.getElementById("controlBtn").addEventListener("click", () => {
+      closeMint();
+      document.getElementById("controlOverlay").classList.add("open");
+    });
+    document.getElementById("closeControl").addEventListener("click", () => document.getElementById("controlOverlay").classList.remove("open"));
+    document.querySelectorAll("[data-jump]").forEach(btn => btn.addEventListener("click", () => goTo(Number(btn.dataset.jump))));
+
+    function toggleBlackout() {
+      document.body.classList.toggle("blackout");
+      if (document.body.classList.contains("blackout")) document.getElementById("controlOverlay").classList.remove("open");
+    }
+    document.getElementById("blackBtn").addEventListener("click", toggleBlackout);
+
+    document.addEventListener("keydown", e => {
+      if (e.key.toLowerCase() === "m") toggleSound();
+      if (e.key.toLowerCase() === "f") document.getElementById("fullBtn").click();
+      if (e.key.toLowerCase() === "b") toggleBlackout();
+      if (e.key.toLowerCase() === "o") {
+        closeMint();
+        document.getElementById("controlOverlay").classList.toggle("open");
+      }
+      if (e.key === "Escape") {
+        closeMint();
+        document.getElementById("controlOverlay").classList.remove("open");
+      }
+    });
+    document.addEventListener("dblclick", () => {
+      if (document.body.classList.contains("blackout")) toggleBlackout();
+    });
+
+    /* ================= 定制银币：翻面 ================= */
+    const giftCoin = document.getElementById("giftCoin");
+    const coinCaption = document.getElementById("coinCaption");
+    const coinFlipBtn = document.getElementById("coinFlipBtn");
+    let giftCoinSide = "front";
+
+    function setGiftCoinSide(side) {
+      giftCoinSide = side;
+      giftCoin.classList.toggle("flipped", side === "back");
+      coinCaption.innerHTML = side === "front"
+        ? "正面 · <b>CAMI I · D·G·REGINA</b>"
+        : "背面 · <b>枫叶面 · 保持原样</b>";
+      coinFlipBtn.textContent = side === "front" ? "翻到枫叶面" : "翻到正面";
+    }
+
+    function flipGiftCoin() {
+      setGiftCoinSide(giftCoinSide === "front" ? "back" : "front");
+      tone(giftCoinSide === "front" ? 659.25 : 523.25, .3, .03);
+      const rect = giftCoin.getBoundingClientRect();
+      burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 10, ["#dfe6ee", "#e8c77e", "#f8f4eb"]);
+    }
+
+    giftCoin.addEventListener("click", flipGiftCoin);
+    giftCoin.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flipGiftCoin(); }
+    });
+    coinFlipBtn.addEventListener("click", flipGiftCoin);
+    setGiftCoinSide("front");
+
+    /* ================= 定制银币：四图融合动画 ================= */
+    const mintOverlay = document.getElementById("mintOverlay");
+    const mintCoin = document.getElementById("mintCoin");
+    const mintCaption = document.getElementById("mintCaption");
+    const mintStatus = document.getElementById("mintStatus");
+    const mintSteps = document.getElementById("mintSteps");
+    const mintFlash = document.getElementById("mintFlash");
+    const MINT_STATUS = [
+      "准备素材…",
+      "四张素材：女王、枫叶，还有两张 Cami。",
+      "正在融合两张照片，生成 Cami 肖像…",
+      "Cami 肖像已生成。",
+      "替换女王头像，压印 CAMI I · D·G·REGINA…",
+      "翻到背面：那片枫叶，一点也没改。",
+      "2026 · 定制银币完成。"
+    ];
+    const MINT_CAPTIONS = {
+      front: "<b>CAMI I · D·G·REGINA</b>5 DOLLARS · 2026",
+      back: "<b>枫叶面 · 保持原样</b>CANADA · 1 OZ · 9999"
+    };
+    let mintRun = 0;
+    let mintStep = 0;
+    let mintParticleTimer = null;
+    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    function setMintStep(step) {
+      mintStep = step;
+      mintOverlay.dataset.step = String(step);
+      mintStatus.textContent = MINT_STATUS[step] || "";
+      [...mintSteps.children].forEach((dot, i) => dot.classList.toggle("on", i < step));
+    }
+
+    function setMintCoinSide(side) {
+      mintCoin.classList.toggle("flipped", side === "back");
+      mintCaption.innerHTML = MINT_CAPTIONS[side];
+    }
+
+    function stopMintParticles() {
+      clearInterval(mintParticleTimer);
+      mintParticleTimer = null;
+      mintOverlay.querySelectorAll(".merge-particle").forEach(el => el.remove());
+    }
+
+    function emitMintParticles(run) {
+      if (run !== mintRun || typeof Element.prototype.animate !== "function") return;
+      const core = document.getElementById("mintCore").getBoundingClientRect();
+      const cx = core.left + core.width / 2;
+      const cy = core.top + core.height / 2;
+      document.querySelectorAll(".mint-source").forEach(card => {
+        const rect = card.getBoundingClientRect();
+        const sx = rect.left + rect.width / 2;
+        const sy = rect.top + rect.height / 2;
+        const p = document.createElement("i");
+        p.className = "merge-particle";
+        p.style.left = `${sx}px`;
+        p.style.top = `${sy}px`;
+        mintOverlay.appendChild(p);
+        const dx = cx - sx + (Math.random() - .5) * 18;
+        const dy = cy - sy + (Math.random() - .5) * 18;
+        const anim = p.animate([
+          { transform: "translate(-50%, -50%) scale(.35)", opacity: 0 },
+          { transform: "translate(-50%, -50%) scale(1)", opacity: 1, offset: .18 },
+          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.2)`, opacity: 0 }
+        ], { duration: 1000 + Math.random() * 400, easing: "cubic-bezier(.35,0,.2,1)" });
+        anim.onfinish = () => p.remove();
+      });
+    }
+
+    function startMintParticles(run) {
+      stopMintParticles();
+      emitMintParticles(run);
+      mintParticleTimer = setInterval(() => emitMintParticles(run), 850);
+    }
+
+    function flashMint() {
+      mintFlash.classList.remove("fire");
+      void mintFlash.offsetWidth;
+      mintFlash.classList.add("fire");
+    }
+
+    async function playMint() {
+      const run = ++mintRun;
+      stopMintParticles();
+      mintOverlay.dataset.step = "0";
+      setMintCoinSide("front");
+      setMintStep(0);
+      await wait(280);
+      if (run !== mintRun) return;
+      setMintStep(1);
+      await wait(reduceMotion ? 500 : 1200);
+      if (run !== mintRun) return;
+      setMintStep(2);
+      startMintParticles(run);
+      await wait(reduceMotion ? 500 : 1900);
+      if (run !== mintRun) return;
+      setMintStep(3);
+      await wait(reduceMotion ? 500 : 1900);
+      if (run !== mintRun) return;
+      stopMintParticles();
+      setMintStep(4);
+      flashMint();
+      const rect = mintCoin.getBoundingClientRect();
+      burst(rect.left + rect.width / 2, rect.top + rect.height / 2, 34, ["#fff3ca", "#dfe6ee", "#e8c77e"]);
+      await wait(reduceMotion ? 500 : 1500);
+      if (run !== mintRun) return;
+      setMintStep(5);
+      setMintCoinSide("back");
+      await wait(reduceMotion ? 500 : 1900);
+      if (run !== mintRun) return;
+      setMintStep(6);
+      setMintCoinSide("front");
+    }
+
+    function openMint() {
+      document.getElementById("controlOverlay").classList.remove("open");
+      mintOverlay.classList.add("open");
+      mintOverlay.setAttribute("aria-hidden", "false");
+      mintOverlay.scrollTop = 0;
+      playMint();
+    }
+
+    function closeMint() {
+      mintRun++;
+      stopMintParticles();
+      mintOverlay.classList.remove("open");
+      mintOverlay.setAttribute("aria-hidden", "true");
+    }
+
+    function skipMint() {
+      mintRun++;
+      stopMintParticles();
+      setMintStep(6);
+      setMintCoinSide("front");
+    }
+
+    document.getElementById("giftMintBtn").addEventListener("click", openMint);
+    document.getElementById("giftMintBtn2").addEventListener("click", openMint);
+    document.getElementById("mintClose").addEventListener("click", closeMint);
+    document.getElementById("mintDone").addEventListener("click", () => {
+      closeMint();
+      showToast("银币已收下");
+    });
+    document.getElementById("mintReplay").addEventListener("click", playMint);
+    document.getElementById("mintSkip").addEventListener("click", skipMint);
+    mintCoin.addEventListener("click", () => {
+      if (mintStep < 6) return;
+      setMintCoinSide(mintCoin.classList.contains("flipped") ? "front" : "back");
+    });
+
+    /* ================= 指定音乐 / 备用音乐 ================= */
+    const finalMusic = new Audio();
+    finalMusic.loop = true;
+    finalMusic.preload = "auto";
+    finalMusic.volume = 0;
+    const nowPlaying = document.getElementById("nowPlaying");
+    const nowPlayingText = document.getElementById("nowPlayingText");
+    const musicName = document.getElementById("musicName");
+    const musicFile = document.getElementById("musicFile");
+    let musicWanted = false;
+    let musicFallback = false;
+    let fallbackTimer = null;
+    let fallbackStep = 0;
+    let trackLabel = CONFIG.musicTitle || CONFIG.finalMusic;
+    let blobUrl = null;
+
+    function ensureAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      return audioCtx;
+    }
+
+    function stopAmbient() {
+      clearInterval(musicTimer);
+      musicTimer = null;
+    }
+
+    function updateMusicUI() {
+      musicName.textContent = trackLabel;
+      musicName.style.color = "";
+      nowPlayingText.textContent = trackLabel;
+    }
+
+    function showNowPlaying(label) {
+      if (!state.sound) return;
+      nowPlayingText.textContent = label;
+      nowPlaying.classList.add("show");
+    }
+
+    function hideNowPlaying() {
+      nowPlaying.classList.remove("show");
+    }
+
+    function pauseFallback() {
+      clearTimeout(fallbackTimer);
+      fallbackTimer = null;
+    }
+
+    function startFallbackMusic(quiet = false) {
+      if (musicFallback && fallbackTimer) return;
+      musicFallback = true;
+      musicSessionActive = false;
+      try { finalMusic.pause(); } catch (e) { /* 忽略未加载状态 */ }
+      ensureAudio();
+      pauseFallback();
+      fallbackStep = 0;
+      const chords = [
+        [261.63, 329.63, 392.00, 493.88],
+        [246.94, 293.66, 392.00, 493.88],
+        [220.00, 261.63, 329.63, 392.00],
+        [174.61, 220.00, 261.63, 329.63]
+      ];
+      const melody = [659.25, 587.33, 523.25, 440.00];
+      const loop = () => {
+        if (!musicWanted) return;
+        if (state.sound) {
+          const chord = chords[fallbackStep % 4];
+          chord.forEach((f, i) => tone(f, 2.2, .008, i * .13));
+          tone(chord[0] / 2, 3.0, .009, 0);
+          const m = melody[fallbackStep % 4];
+          setTimeout(() => { if (state.sound && musicFallback && fallbackTimer) tone(m, .9, .006); }, 620);
+          setTimeout(() => { if (state.sound && musicFallback && fallbackTimer) tone(m * 1.5, .9, .004); }, 1400);
+        }
+        fallbackStep++;
+        fallbackTimer = setTimeout(loop, 2600);
+      };
+      loop();
+      trackLabel = "内置钢琴 · 备用音乐";
+      updateMusicUI();
+      showNowPlaying(trackLabel);
+      if (!quiet) showToast("没有找到音乐文件，已切换内置音乐");
+    }
+
+    function startFinalMusic() {
+      musicWanted = true;
+      stopAmbient();
+      if (musicFallback) {
+        pauseFallback();
+        startFallbackMusic();
+        return;
+      }
+      musicSessionActive = true;
+      // 释放 WebAudio 的音频会话，避免它在 Safari / iPadOS 上抢走 HTMLAudio。
+      if (audioCtx && audioCtx.state === "running") audioCtx.suspend().catch(() => {});
+      finalMusic.muted = !state.sound;
+      finalMusic.volume = CONFIG.musicVolume;
+      try { finalMusic.currentTime = 0; } catch (e) { /* 文件未加载时忽略 */ }
+      const promise = finalMusic.play();
+      if (promise && promise.then) {
+        promise.then(() => {
+          if (state.sound) showNowPlaying(trackLabel);
+        }).catch(() => {
+          if (!musicFallback) startFallbackMusic();
+        });
+      }
+    }
+
+    finalMusic.addEventListener("error", () => {
+      if (!finalMusic.error) return;
+      if (musicWanted && !musicFallback) {
+        startFallbackMusic();
+      } else if (!musicWanted && musicName) {
+        musicName.textContent = `${trackLabel} · 未找到或无法播放`;
+        musicName.style.color = "#e09a8e";
+      }
+    });
+
+    function setMusicTrack(src, label) {
+      musicFallback = false;
+      pauseFallback();
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+        blobUrl = src.startsWith("blob:") ? src : null;
+      } else if (src.startsWith("blob:")) {
+        blobUrl = src;
+      }
+      trackLabel = label;
+      finalMusic.src = src;
+      finalMusic.load();
+      updateMusicUI();
+    }
+
+    function initMusic() {
+      setMusicTrack(CONFIG.finalMusic, CONFIG.musicTitle || CONFIG.finalMusic);
+    }
+
+    document.getElementById("pickMusicBtn").addEventListener("click", () => musicFile.click());
+    musicFile.addEventListener("change", () => {
+      const file = musicFile.files && musicFile.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      setMusicTrack(url, file.name);
+      musicWanted = true;
+      musicSessionActive = true;
+      stopAmbient();
+      if (audioCtx && audioCtx.state === "running") audioCtx.suspend().catch(() => {});
+      finalMusic.muted = !state.sound;
+      finalMusic.volume = CONFIG.musicVolume;
+      finalMusic.play().then(() => {
+        showNowPlaying(file.name);
+        showToast(`已载入：${file.name}`);
+      }).catch(() => showToast("这个音频无法播放，换一个 mp3 试试"));
+    });
+    document.getElementById("testMusicBtn").addEventListener("click", () => {
+      if (musicFallback) {
+        if (fallbackTimer) {
+          pauseFallback();
+          hideNowPlaying();
+        } else {
+          startFallbackMusic(true);
+        }
+        return;
+      }
+      if (!finalMusic.paused) {
+        finalMusic.pause();
+        hideNowPlaying();
+        return;
+      }
+      musicWanted = true;
+      musicSessionActive = true;
+      stopAmbient();
+      if (audioCtx && audioCtx.state === "running") audioCtx.suspend().catch(() => {});
+      if (!state.sound) {
+        state.sound = true;
+        document.getElementById("soundBtn").textContent = "♪";
+        document.getElementById("soundBtn").setAttribute("aria-label", "关闭声音");
+      }
+      finalMusic.muted = false;
+      finalMusic.volume = CONFIG.musicVolume;
+      finalMusic.play().then(() => {
+        showNowPlaying(trackLabel);
+      }).catch(() => startFallbackMusic());
+    });
+
+    /* ================= 最后的模型竞猜 ================= */
+    const MODELS = [
+      { id: "gemini", label: "Gemini" },
+      { id: "gpt", label: "GPT" },
+      { id: "qwen", label: "Qwen" },
+      { id: "doubao", label: "豆包" },
+      { id: "deepseek", label: "DeepSeek" },
+      { id: "kimi", label: "Kimi" },
+      { id: "glm", label: "GLM" }
+    ];
+    // 5kw = 5,000 万 = 50,000,000 token
+    const TOKEN_OPTIONS = [
+      { id: "500k", label: "50 万" },
+      { id: "5m", label: "500 万" },
+      { id: "50m", label: "5,000 万" },
+      { id: "500m", label: "5 亿" }
+    ];
+    const guess = { code: null, image: null, tokens: null, revealed: false };
+    const guessSubmit = document.getElementById("guessSubmit");
+
+    function modelLabel(id) {
+      const item = MODELS.find(m => m.id === id);
+      return item ? item.label : id;
+    }
+
+    function tokenLabel(id) {
+      const item = TOKEN_OPTIONS.find(t => t.id === id);
+      return item ? item.label : id;
+    }
+
+    function optionLabel(key, id) {
+      return key === "tokens" ? tokenLabel(id) : modelLabel(id);
+    }
+
+    function updateGuessBtn() {
+      guessSubmit.disabled = !(guess.code && guess.image && guess.tokens) || guess.revealed;
+    }
+
+    function resetGuess() {
+      guess.code = null;
+      guess.image = null;
+      guess.tokens = null;
+      guess.revealed = false;
+      document.querySelectorAll(".model-btn").forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove("picked", "correct", "wrong");
+      });
+      document.getElementById("guessResult").innerHTML = "";
+      document.getElementById("finalNote").classList.remove("show");
+      updateGuessBtn();
+    }
+
+    function buildGuess() {
+      document.querySelectorAll(".guess-block").forEach(block => {
+        const key = block.dataset.guess;
+        const wrap = block.querySelector(".model-options");
+        const options = key === "tokens" ? TOKEN_OPTIONS : MODELS;
+        options.forEach(option => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "model-btn";
+          btn.dataset.model = option.id;
+          btn.textContent = option.label;
+          btn.addEventListener("click", () => {
+            if (guess.revealed) return;
+            guess[key] = option.id;
+            wrap.querySelectorAll(".model-btn").forEach(x => x.classList.toggle("picked", x === btn));
+            tone(440 + options.findIndex(m => m.id === option.id) * 32, .18, .025);
+            updateGuessBtn();
+          });
+          wrap.appendChild(btn);
+        });
+      });
+      document.getElementById("codeModelName").textContent = modelLabel(CONFIG.codeModel);
+      document.getElementById("imageModelName").textContent = modelLabel(CONFIG.imageModel);
+      document.getElementById("tokenCostName").textContent = tokenLabel(CONFIG.tokenAnswer);
+    }
+
+    function revealGuess() {
+      if (!(guess.code && guess.image && guess.tokens) || guess.revealed) return;
+      guess.revealed = true;
+      guessSubmit.disabled = true;
+      const answer = { code: CONFIG.codeModel, image: CONFIG.imageModel, tokens: CONFIG.tokenAnswer };
+      document.querySelectorAll(".guess-block").forEach(block => {
+        const key = block.dataset.guess;
+        block.querySelectorAll(".model-btn").forEach(btn => {
+          btn.disabled = true;
+          const isAnswer = btn.dataset.model === answer[key];
+          const isPicked = btn.dataset.model === guess[key];
+          if (isAnswer) btn.classList.add("correct");
+          if (isPicked && !isAnswer) btn.classList.add("wrong");
+        });
+      });
+      const codeOk = guess.code === answer.code;
+      const imageOk = guess.image === answer.image;
+      const tokenOk = guess.tokens === answer.tokens;
+      const score = (codeOk ? 1 : 0) + (imageOk ? 1 : 0) + (tokenOk ? 1 : 0);
+      const line = score === 3
+        ? "三道全对。看来你比我想的更懂我。"
+        : score === 2
+          ? "猜对两道。最后那点秘密，留给我慢慢告诉你。"
+          : score === 1
+            ? "猜对一道。没关系，反正最后写进故事里的，是我们两个人。"
+            : "一道都没猜对。没关系，答案不重要——你在这里才重要。";
+      document.getElementById("guessResult").innerHTML = `
+        <div class="answer-reveal">
+          <div class="answer-row"><span>写代码</span><b>${optionLabel("code", answer.code)}</b><em class="${codeOk ? "ok" : "no"}">${codeOk ? "猜对了" : "你猜的是 " + optionLabel("code", guess.code)}</em></div>
+          <div class="answer-row"><span>画银币</span><b>${optionLabel("image", answer.image)}</b><em class="${imageOk ? "ok" : "no"}">${imageOk ? "猜对了" : "你猜的是 " + optionLabel("image", guess.image)}</em></div>
+          <div class="answer-row"><span>烧 token</span><b>${optionLabel("tokens", answer.tokens)}</b><em class="${tokenOk ? "ok" : "no"}">${tokenOk ? "猜对了" : "你猜的是 " + optionLabel("tokens", guess.tokens)}</em></div>
+        </div>
+        <p class="guess-line">${line}</p>`;
+      document.getElementById("finalNote").classList.add("show");
+      burst(innerWidth / 2, innerHeight * .42, 46, ["#e8c77e", "#fff3ca", "#d75a4a", "#f8f4eb"]);
+      [523.25, 659.25, 783.99, 1046.50].forEach((n, i) => tone(n, .7, .03, i * .13));
+      setTimeout(() => {
+        document.getElementById("finalNote").scrollIntoView({
+          behavior: reduceMotion ? "auto" : "smooth",
+          block: "end"
+        });
+      }, 420);
+    }
+
+    guessSubmit.addEventListener("click", revealGuess);
+    buildGuess();
+
+    const sky = document.getElementById("sky");
+    const skyCtx = sky.getContext("2d");
+    let stars = [];
+    let motes = [];
+
+    function resizeSky() {
+      const ratio = Math.min(devicePixelRatio || 1, 2);
+      sky.width = innerWidth * ratio; sky.height = innerHeight * ratio;
+      sky.style.width = innerWidth + "px"; sky.style.height = innerHeight + "px";
+      skyCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      stars = Array.from({length: Math.min(160, Math.floor(innerWidth * innerHeight / 9000))}, () => ({
+        x: Math.random() * innerWidth, y: Math.random() * innerHeight, r: Math.random() * 1.4 + .2, a: Math.random(), s: Math.random() * .008 + .002
+      }));
+      motes = Array.from({length: 18}, () => ({
+        x: Math.random() * innerWidth, y: Math.random() * innerHeight, r: Math.random() * 2 + .5, vx: (Math.random()-.5)*.12, vy: -Math.random()*.15-.03
+      }));
+      if (state.scene === 3) resizeLeafCanvas();
+    }
+
+    function drawSky() {
+      skyCtx.clearRect(0,0,innerWidth,innerHeight);
+      stars.forEach(s => {
+        s.a += s.s; const alpha = .2 + Math.abs(Math.sin(s.a)) * .55;
+        skyCtx.fillStyle = `rgba(248,244,235,${alpha})`;
+        skyCtx.beginPath(); skyCtx.arc(s.x,s.y,s.r,0,Math.PI*2); skyCtx.fill();
+      });
+      motes.forEach(m => {
+        m.x += m.vx; m.y += m.vy;
+        if (m.y < -5) { m.y = innerHeight + 5; m.x = Math.random() * innerWidth; }
+        skyCtx.fillStyle = "rgba(232,199,126,.2)";
+        skyCtx.beginPath(); skyCtx.arc(m.x,m.y,m.r,0,Math.PI*2); skyCtx.fill();
+      });
+      requestAnimationFrame(drawSky);
+    }
+
+    window.addEventListener("resize", resizeSky);
+    resizeSky(); drawSky(); initMusic(); goTo(0);
+
+    // 排练用：Cami.html?scene=4 直接跳到礼物；?mint=1 直接播放铸币动画；?mint=1&step=6 直接看成品。
+    const params = new URLSearchParams(location.search);
+    if (params.has("scene")) {
+      const sceneParam = Number(params.get("scene"));
+      if (Number.isInteger(sceneParam) && sceneParam >= 0 && sceneParam <= TOTAL_SCENES) goTo(sceneParam);
+    }
+    if (params.get("mint") === "1") {
+      goTo(4);
+      setTimeout(() => {
+        openMint();
+        if (params.get("step") === "6") setTimeout(skipMint, 300);
+      }, 450);
+    }
+  </script>
+</body>
+</html>
